@@ -66,16 +66,16 @@ void testApp::setup()
 	// You have to get motion and sound data from http://www.perfume-global.com
 	
 	// setup bvh
-	bvh[0].load("bvh/dancingFiles/A.bvh");
-	bvh[1].load("bvh/dancingFiles/B.bvh");
-	bvh[2].load("bvh/dancingFiles/C.bvh");
+	bvh[0].load("bvhfiles/aachan.bvh");
+	bvh[1].load("bvhfiles/kashiyuka.bvh");
+	bvh[2].load("bvhfiles/nocchi.bvh");
 	
 	for (int i = 0; i < bvh.size(); i++)
 	{
 		bvh[i].setFrame(1);
 	}
 	
-	track.loadSound("main_audio/perhp.wav");
+	track.loadSound("Perfume_globalsite_sound.wav");
 	track.play();
 	track.setLoop(true);
 	

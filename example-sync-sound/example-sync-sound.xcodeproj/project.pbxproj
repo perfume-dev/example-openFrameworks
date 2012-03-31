@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		60EF067F1517A53600FC5D12 /* ofxBvh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 60EF067A1517A53600FC5D12 /* ofxBvh.cpp */; };
+		60BF71DE15271F3F00604CB3 /* ofxBvh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 60BF71DC15271F3F00604CB3 /* ofxBvh.cpp */; };
 		BBAB23CB13894F3D00AA2426 /* GLUT.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = BBAB23BE13894E4700AA2426 /* GLUT.framework */; };
 		E4328149138ABC9F0047C5CB /* openFrameworksDebug.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E4328148138ABC890047C5CB /* openFrameworksDebug.a */; };
 		E45BE97B0E8CC7DD009D7055 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E45BE9710E8CC7DD009D7055 /* AGL.framework */; };
@@ -58,8 +58,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		60EF067A1517A53600FC5D12 /* ofxBvh.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxBvh.cpp; sourceTree = "<group>"; };
-		60EF067B1517A53600FC5D12 /* ofxBvh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxBvh.h; sourceTree = "<group>"; };
+		60BF71D915271F3F00604CB3 /* .gitignore */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		60BF71DA15271F3F00604CB3 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		60BF71DC15271F3F00604CB3 /* ofxBvh.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ofxBvh.cpp; sourceTree = "<group>"; };
+		60BF71DD15271F3F00604CB3 /* ofxBvh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ofxBvh.h; sourceTree = "<group>"; };
 		BBAB23BE13894E4700AA2426 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = ../../../libs/glut/lib/osx/GLUT.framework; sourceTree = "<group>"; };
 		E4328143138ABC890047C5CB /* openFrameworksLib.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = openFrameworksLib.xcodeproj; path = ../../../libs/openFrameworksCompiled/project/osx/openFrameworksLib.xcodeproj; sourceTree = SOURCE_ROOT; };
 		E45BE9710E8CC7DD009D7055 /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
@@ -108,20 +110,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		60EF064A1517A53600FC5D12 /* ofxBvh */ = {
+		60BF71D815271F3F00604CB3 /* ofxBvh */ = {
 			isa = PBXGroup;
 			children = (
-				60EF06791517A53600FC5D12 /* src */,
+				60BF71D915271F3F00604CB3 /* .gitignore */,
+				60BF71DA15271F3F00604CB3 /* LICENSE */,
+				60BF71DB15271F3F00604CB3 /* src */,
 			);
 			name = ofxBvh;
-			path = ..;
+			path = ../../../addons/ofxBvh;
 			sourceTree = "<group>";
 		};
-		60EF06791517A53600FC5D12 /* src */ = {
+		60BF71DB15271F3F00604CB3 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				60EF067A1517A53600FC5D12 /* ofxBvh.cpp */,
-				60EF067B1517A53600FC5D12 /* ofxBvh.h */,
+				60BF71DC15271F3F00604CB3 /* ofxBvh.cpp */,
+				60BF71DD15271F3F00604CB3 /* ofxBvh.h */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -129,7 +133,7 @@
 		BB4B014C10F69532006C3DED /* addons */ = {
 			isa = PBXGroup;
 			children = (
-				60EF064A1517A53600FC5D12 /* ofxBvh */,
+				60BF71D815271F3F00604CB3 /* ofxBvh */,
 			);
 			name = addons;
 			sourceTree = "<group>";
@@ -296,7 +300,7 @@
 			files = (
 				E4B69E200A3A1BDC003C02F2 /* main.cpp in Sources */,
 				E4B69E210A3A1BDC003C02F2 /* testApp.cpp in Sources */,
-				60EF067F1517A53600FC5D12 /* ofxBvh.cpp in Sources */,
+				60BF71DE15271F3F00604CB3 /* ofxBvh.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -52,16 +52,35 @@ jobs:
 
   linux-render:
     name: Linux Mesa rendering
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # A clean Jammy package set avoids dependency conflicts with SDKs preinstalled on hosted runners.
+    container:
+      image: ubuntu:22.04@sha256:2edbbc5dc405e9612ba3584ce95480277e3eb374407b5505fe26f17df77c7dbc
+    defaults:
+      run:
+        shell: bash
 
     env:
       OF_URL: https://github.com/openframeworks/openFrameworks/releases/download/0.12.1/of_v0.12.1_linux64_gcc6_release.tar.gz
       OF_SHA256: d6c1dcab777665b2aa63e5e3d9122cc116f096b3421db3493f795a621b399c63
       LIBGL_ALWAYS_SOFTWARE: "1"
       GALLIUM_DRIVER: llvmpipe
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
 
     steps:
+      - name: Bootstrap clean Ubuntu container
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends \
+            ca-certificates curl git sudo zstd lsb-release pkg-config
+          mkdir -p "${RUNNER_TEMP}/example-captures"
+          apt-cache policy libunwind-dev libunwind8 libgstreamer1.0-dev \
+            | tee "${RUNNER_TEMP}/example-captures/dependency-policy.log"
+          # Install the GStreamer prerequisite explicitly; fail here if package resolution breaks.
+          apt-get install --yes --no-install-recommends libunwind-dev
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -70,7 +89,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/of_v0.12.1_linux64_gcc6_release
-          key: openframeworks-0.12.1-ubuntu-22.04-${{ runner.arch }}-d6c1dcab7776-v1
+          key: openframeworks-0.12.1-jammy-container-2edbbc5dc405-${{ runner.arch }}-d6c1dcab7776-v1
 
       - name: Download verified openFrameworks release
         if: steps.cache-openframeworks.outputs.cache-hit != 'true'

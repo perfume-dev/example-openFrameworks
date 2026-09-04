@@ -97,7 +97,9 @@ To render every example in a hidden test window and save PNG evidence:
 ```
 
 The GitHub workflow builds and runs regression tests on macOS, then independently
-builds and renders all eight examples on Ubuntu 22.04 with Mesa llvmpipe and Xvfb.
+builds and renders all eight examples in a clean, digest-pinned Ubuntu 22.04
+container with Mesa llvmpipe and Xvfb. The container isolates OF dependencies
+from the hosted runner's preinstalled compiler SDKs.
 This supplies a real software OpenGL context where hosted macOS runners cannot
 provide the required pixel format. The `openframeworks-rendering` artifact contains
 screenshots, application logs and the OpenGL context report. Render failures fail

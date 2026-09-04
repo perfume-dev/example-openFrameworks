@@ -13,6 +13,8 @@ apps=(
 	"particle-motion-example"
 	"motion-visualization"
 	"marching-cubes"
+	"example-motion-ribbons"
+	"example-motion-field"
 )
 
 for app in "${apps[@]}"; do
@@ -23,11 +25,11 @@ for app in "${apps[@]}"; do
 	xcodebuild -project "$project" -list >/dev/null
 
 	grep -Fq '"path": "src/main.cpp"' "$pbxproj"
-	grep -Fq '"name": "testApp.cpp"' "$pbxproj"
-	grep -Fq '"name": "testApp.h"' "$pbxproj"
+	grep -Fq '"name": "ofApp.cpp"' "$pbxproj"
+	grep -Fq '"name": "ofApp.h"' "$pbxproj"
 	grep -Fq '"path": "../ofxBvh/src/ofxBvh.cpp"' "$pbxproj"
-	if grep -Eq 'ofApp\.(cpp|h)' "$pbxproj"; then
-		echo "$app references a missing template ofApp source" >&2
+	if grep -Eq 'testApp\.(cpp|h)' "$pbxproj"; then
+		echo "$app references a removed testApp source" >&2
 		exit 1
 	fi
 

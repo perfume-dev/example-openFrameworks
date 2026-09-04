@@ -23,6 +23,8 @@ apps=(
 	"particle-motion-example"
 	"motion-visualization"
 	"marching-cubes"
+	"example-motion-ribbons"
+	"example-motion-field"
 )
 
 for app in "${apps[@]}"; do

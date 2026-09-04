@@ -5,8 +5,6 @@
 #include <limits>
 #include <sstream>
 
-static inline void billboard();
-
 namespace {
 
 bool parseFloatToken(const string& token, float& value)
@@ -283,42 +281,32 @@ void ofxBvh::update(float deltaSeconds)
 void ofxBvh::draw()
 {
 	if (!isLoaded()) return;
-
-	ofPushStyle();
-	ofFill();
-	
-	for (int i = 0; i < joints.size(); i++)
-	{
-		ofxBvhJoint *o = joints[i];
-		glPushMatrix();
-		glMultMatrixf(o->getGlobalMatrix().getPtr());
-		
-		if (o->isSite())
-		{
-			ofSetColor(ofColor::yellow);
-			billboard();
-			ofDrawCircle(0, 0, 6);
+	// Build camera-facing discs using the renderer's GLM matrix stack.
+	// No fixed-function OpenGL calls: this works in a 3.2 core context.
+	const glm::mat4 inverseView = glm::inverse(ofGetCurrentMatrix(OF_MATRIX_MODELVIEW));
+	const glm::vec3 right(inverseView[0]);
+	const glm::vec3 up(inverseView[1]);
+	ofMesh discs;
+	discs.setMode(OF_PRIMITIVE_TRIANGLES);
+	constexpr int segments = 16;
+	for (const auto* joint : joints) {
+		const glm::vec3 position(joint->getPosition());
+		const float radius = joint->isSite() ? 6.0f : (joint->getChildren().size() == 1 ? 2.0f : 4.0f);
+		const ofFloatColor color(joint->isSite() ? ofColor::yellow
+			: joint->isRoot() ? ofColor::cyan
+			: joint->getChildren().size() > 1 ? ofColor::green : ofColor::white);
+		for (int segment = 0; segment < segments; ++segment) {
+			const float a = TWO_PI * float(segment) / segments;
+			const float b = TWO_PI * float(segment + 1) / segments;
+			discs.addVertex(position);
+			discs.addVertex(position + radius * (right * std::cos(a) + up * std::sin(a)));
+			discs.addVertex(position + radius * (right * std::cos(b) + up * std::sin(b)));
+			for (int vertex = 0; vertex < 3; ++vertex) discs.addColor(color);
 		}
-		else if (o->getChildren().size() == 1)
-		{
-			ofSetColor(ofColor::white);		
-			billboard();
-			ofDrawCircle(0, 0, 2);
-		}
-		else if (o->getChildren().size() > 1)
-		{
-			if (o->isRoot())
-				ofSetColor(ofColor::cyan);
-			else
-				ofSetColor(ofColor::green);
-			
-			billboard();
-			ofDrawCircle(0, 0, 4);
-		}
-		
-		glPopMatrix();
 	}
-	
+	ofPushStyle();
+	ofSetColor(255);
+	discs.draw();
 	ofPopStyle();
 }
 
@@ -603,54 +591,4 @@ const ofxBvhJoint* ofxBvh::getJoint(const string& name) const
 {
 	const auto it = jointMap.find(name);
 	return it == jointMap.end() ? nullptr : it->second;
-}
-
-static inline void billboard()
-{
-	GLfloat m[16];
-	glGetFloatv(GL_MODELVIEW_MATRIX, m);
-	
-	constexpr float epsilon = 1e-12f;
-
-	m[8] = -m[12];
-	m[9] = -m[13];
-	m[10] = -m[14];
-	float lengthSquared = m[8] * m[8] + m[9] * m[9] + m[10] * m[10];
-	if (lengthSquared > epsilon)
-	{
-		const float inverseLength = 1.0f / std::sqrt(lengthSquared);
-		m[8] *= inverseLength;
-		m[9] *= inverseLength;
-		m[10] *= inverseLength;
-	}
-	else
-	{
-		m[8] = 0.0f;
-		m[9] = 0.0f;
-		m[10] = 1.0f;
-	}
-	
-	m[0] = -m[14];
-	m[1] = 0.0;
-	m[2] = m[12];
-	lengthSquared = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
-	if (lengthSquared > epsilon)
-	{
-		const float inverseLength = 1.0f / std::sqrt(lengthSquared);
-		m[0] *= inverseLength;
-		m[1] *= inverseLength;
-		m[2] *= inverseLength;
-	}
-	else
-	{
-		m[0] = 1.0f;
-		m[1] = 0.0f;
-		m[2] = 0.0f;
-	}
-	
-	m[4] = m[9] * m[2] - m[10] * m[1];
-	m[5] = m[10] * m[0] - m[8] * m[2];
-	m[6] = m[8] * m[1] - m[9] * m[0];
-	
-	glLoadMatrixf(m);
 }

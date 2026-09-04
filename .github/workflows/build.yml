@@ -48,3 +48,14 @@ jobs:
 
       - name: Build all applications and run regression tests
         run: ./scripts/build-all.sh "${RUNNER_TEMP}/of_v0.12.1_osx_release"
+
+      - name: Render all examples with OpenGL 3.2
+        run: ./scripts/smoke-all.sh "${RUNNER_TEMP}/example-captures"
+
+      - name: Keep rendering evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openframeworks-rendering
+          path: ${{ runner.temp }}/example-captures
+          retention-days: 7

@@ -2,12 +2,31 @@
 
 [![Build openFrameworks 0.12.1](https://github.com/perfume-dev/example-openFrameworks/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/perfume-dev/example-openFrameworks/actions/workflows/build.yml)
 
-This repository contains openFrameworks examples created around the 2012
-Perfume “Global Site Project.” It is maintained for
-[openFrameworks 0.12.1](https://openframeworks.cc/download/), the current
-stable release. The original visual character and data formats are preserved
-while the application lifecycle, APIs, project files, dependency handling, and
-BVH playback safety have been updated.
+Motion-capture studies for [openFrameworks 0.12.1](https://openframeworks.cc/download/).
+The six examples from the 2012 Perfume “Global Site Project” now use the
+programmable OpenGL 3.2 renderer, `ofApp`, member-owned state, and mesh-based
+drawing. Two new shader studies turn the bundled motion into luminous ribbons
+and animated contour fields.
+
+## Start with the shader studies
+
+| Example | What you see | What you learn |
+| --- | --- | --- |
+| [Motion Ribbons](example-motion-ribbons) | Fine luminous trails following the dancers | Vertex, geometry, and fragment shaders; expanding a line into a ribbon |
+| [Motion Field](example-motion-field) | Contours and halos around moving joints | Passing motion to a full-screen fragment shader |
+
+![Motion Ribbons rendered with its vertex, geometry, and fragment shaders](docs/images/motion-ribbons.png)
+
+![Motion Field rendered with its full-screen fragment shader](docs/images/motion-field.png)
+
+These are actual application captures, not concept images. The studies recenter
+horizontal root travel to keep the three dancers legible; they show the recorded
+poses rather than reconstructing the original stage formation.
+
+Both use the existing bundled BVH samples and need no external addons or audio
+downloads. The [shader guide](docs/shaders.md) explains the rendering stages and
+where to start editing. Companion studies are available in the
+[Processing repository](https://github.com/perfume-dev/example-processing).
 
 ## Stewardship
 
@@ -44,6 +63,8 @@ notices.
 | `particle-motion-example` | Particle forces driven by tracked joints |
 | `motion-visualization` | Long-exposure-style joint trajectories |
 | `marching-cubes` | A metaball surface driven by skeletal endpoints |
+| `example-motion-ribbons` | Geometry-shader ribbons following the bundled motion |
+| `example-motion-field` | A joint-driven fragment-shader contour field |
 | `ofxBvh` | The bundled BVH loader and player used by every example |
 
 ## Build with openFrameworks 0.12.1
@@ -60,7 +81,7 @@ cd "$OF_ROOT/apps/myApps/example-openFrameworks"
 ./scripts/build-all.sh "$OF_ROOT"
 ```
 
-The script builds all six applications in Release mode and runs the `ofxBvh`
+The script builds all eight applications in Release mode and runs the `ofxBvh`
 boundary/malformed-input and marching-cubes lifecycle regression tests. An
 individual application can be built with, for example:
 
@@ -68,6 +89,17 @@ individual application can be built with, for example:
 make -C example-bvh Release OF_ROOT="$OF_ROOT"
 open example-bvh/bin/example-bvh.app
 ```
+
+To render every example in a hidden test window and save PNG evidence:
+
+```sh
+./scripts/smoke-all.sh /path/to/captures
+```
+
+The GitHub workflow performs the same render checks after building. Its
+`openframeworks-rendering` artifact contains screenshots and logs. This requires
+a desktop OpenGL context, even though the test windows stay hidden. The shader
+studies are captured at two motion timestamps to check that their output changes.
 
 The checked-in Xcode projects were regenerated from the openFrameworks 0.12.1
 macOS template. They use relative paths and expect the repository layout shown
@@ -77,7 +109,8 @@ above. If you put the repository elsewhere, use the Makefiles with an explicit
 ## Motion and audio data
 
 `example-bvh` is ready to run with its bundled `A_test.bvh`, `B_test.bvh`, and
-`C_test.bvh` files. The other five applications first look for the historical
+`C_test.bvh` files. The two new shader studies read those same files. The other
+five historical applications first look for the original
 Perfume Global Site assets in each application's `bin/data` directory:
 
 ```text
@@ -106,3 +139,8 @@ the two examples by Atsushi Tadokoro retain their original copyright and MIT
 license notices. See [LICENSES.md](LICENSES.md) for the component-by-component
 license index; the repository does not apply one blanket license to every
 directory.
+
+The maintained example code uses GLM vectors and mesh drawing. `ofxBvh` retains
+its older public vector/matrix types so existing addon consumers continue to
+compile; its example rendering supports the programmable renderer. The vendored
+marching-cubes dependency retains its upstream public interface and attribution.

@@ -1,32 +1,16 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxMarchingCubes.h"
 
-class MetaBall: public ofPoint{
-public:
-	ofPoint accel, vel;
-	float size;
-	MetaBall(){
-		size = ofRandom(5, 10);
-	}
-	
-	void init(const ofPoint& _pos){
-		x = _pos.x;
-		y = _pos.y;
-	}
-	
-	void goTo(const ofPoint& target, float k = 0.1f, float damp = 0.9f){
-		accel = (target - *this)*k;
-		vel += accel;
-		vel *= damp;
-		*this += vel;
-	}
-	
-	void update(const ofPoint& _force, float damp = 0.9f){
-		vel += _force;
-		vel *= damp;
-		*this += vel;
+struct MetaBall {
+	glm::vec3 position{0};
+	glm::vec3 velocity{0};
+	float size = 1.4f;
+
+	void follow(const glm::vec3& target, float deltaSeconds) {
+		const float steps = std::min(deltaSeconds * 60.0f, 4.0f);
+		velocity += (target - position) * 0.3f * steps;
+		velocity *= std::pow(0.94f, steps);
+		position += velocity * steps;
 	}
 };
-

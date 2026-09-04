@@ -1,47 +1,135 @@
 #include "ofxBvh.h"
 
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
+#include <sstream>
+
 static inline void billboard();
+
+namespace {
+
+bool parseFloatToken(const string& token, float& value)
+{
+	if (token.empty()) return false;
+
+	char* end = nullptr;
+	errno = 0;
+	value = std::strtof(token.c_str(), &end);
+	return errno != ERANGE && end == token.c_str() + token.size() && std::isfinite(value);
+}
+
+bool parseIntToken(const string& token, int& value)
+{
+	if (token.empty()) return false;
+
+	char* end = nullptr;
+	errno = 0;
+	const long parsed = std::strtol(token.c_str(), &end, 10);
+	if (errno == ERANGE || end != token.c_str() + token.size()
+		|| parsed < std::numeric_limits<int>::min()
+		|| parsed > std::numeric_limits<int>::max())
+	{
+		return false;
+	}
+
+	value = static_cast<int>(parsed);
+	return true;
+}
+
+bool valueForHeader(const string& line, const string& expectedKey, string& value)
+{
+	const size_t colon = line.find(':');
+	if (colon == string::npos || ofTrim(line.substr(0, colon)) != expectedKey) return false;
+	value = ofTrim(line.substr(colon + 1));
+	return !value.empty();
+}
+
+size_t findSectionLine(const string& data, const string& section, size_t offset = 0)
+{
+	size_t lineStart = offset;
+	while (lineStart < data.size())
+	{
+		const size_t lineEnd = data.find('\n', lineStart);
+		const size_t length = lineEnd == string::npos
+			? data.size() - lineStart
+			: lineEnd - lineStart;
+		if (ofTrim(data.substr(lineStart, length)) == section) return lineStart;
+		if (lineEnd == string::npos) break;
+		lineStart = lineEnd + 1;
+	}
+	return string::npos;
+}
+
+} // namespace
 
 ofxBvh::~ofxBvh()
 {
 	unload();
 }
 
-void ofxBvh::load(string path)
+bool ofxBvh::load(const of::filesystem::path& path)
 {
-	path = ofToDataPath(path);
+	unload();
+	const auto dataPath = ofToDataPathFS(path, true);
+	const string data = ofBufferFromFile(dataPath).getText();
 	
-	string data = ofBufferFromFile(path).getText();
-	
-	const size_t HIERARCHY_BEGIN = data.find("HIERARCHY", 0);
-	const size_t MOTION_BEGIN = data.find("MOTION", 0);
-	
-	if (HIERARCHY_BEGIN == string::npos
-		|| MOTION_BEGIN == string::npos)
+	if (data.empty())
 	{
-		ofLogError("ofxBvh", "invalid bvh format");
-		return;
+		ofLogError("ofxBvh") << "could not read " << dataPath;
+		return false;
 	}
 	
-	parseHierarchy(data.substr(HIERARCHY_BEGIN, MOTION_BEGIN));
-	parseMotion(data.substr(MOTION_BEGIN));
+	const size_t HIERARCHY_BEGIN = findSectionLine(data, "HIERARCHY");
+	const size_t MOTION_BEGIN = findSectionLine(data, "MOTION",
+		HIERARCHY_BEGIN == string::npos ? 0 : HIERARCHY_BEGIN);
 	
-	currentFrame = frames[0];
+	if (HIERARCHY_BEGIN == string::npos
+		|| MOTION_BEGIN == string::npos
+		|| HIERARCHY_BEGIN >= MOTION_BEGIN)
+	{
+		ofLogError("ofxBvh") << "invalid BVH format in " << dataPath;
+		return false;
+	}
 	
-	int index = 0;
-	updateJoint(index, currentFrame, root);
+	if (!parseHierarchy(data.substr(HIERARCHY_BEGIN, MOTION_BEGIN - HIERARCHY_BEGIN))
+		|| !parseMotion(data.substr(MOTION_BEGIN)))
+	{
+		ofLogError("ofxBvh") << "could not parse " << dataPath;
+		unload();
+		return false;
+	}
+	
+	if (!root || frames.empty() || frame_time <= 0.0f)
+	{
+		ofLogError("ofxBvh") << "incomplete BVH data in " << dataPath;
+		unload();
+		return false;
+	}
+
+	currentFrame = frames.front();
+	
+	size_t index = 0;
+	if (!updateJoint(index, currentFrame, root) || index != currentFrame.size())
+	{
+		ofLogError("ofxBvh") << "invalid channel data in " << dataPath;
+		unload();
+		return false;
+	}
 	
 	frame_new = false;
+	return true;
 }
 
 void ofxBvh::unload()
 {
-	for (int i = 0; i < joints.size(); i++)
-		delete joints[i];
+	for (ofxBvhJoint* joint : joints)
+		delete joint;
 	
 	joints.clear();
+	jointMap.clear();
 	
-	root = NULL;
+	root = nullptr;
 	
 	frames.clear();
 	currentFrame.clear();
@@ -55,6 +143,7 @@ void ofxBvh::unload()
 	loop = false;
 	
 	need_update = false;
+	frame_new = false;
 }
 
 void ofxBvh::play()
@@ -67,7 +156,7 @@ void ofxBvh::stop()
 	playing = false;
 }
 
-bool ofxBvh::isPlaying()
+bool ofxBvh::isPlaying() const
 {
 	return playing;
 }
@@ -77,35 +166,37 @@ void ofxBvh::setLoop(bool yn)
 	loop = yn;
 }
 
-bool ofxBvh::isLoop() { return loop; }
+bool ofxBvh::isLoop() const { return loop; }
 
 void ofxBvh::setRate(float rate)
 {
-	this->rate = rate;
+	this->rate = std::isfinite(rate) ? rate : 0.0f;
 }
 
-void ofxBvh::updateJoint(int& index, const FrameData& frame_data, ofxBvhJoint *joint)
+bool ofxBvh::updateJoint(size_t& index, const FrameData& frame_data, ofxBvhJoint *joint)
 {
+	if (!joint) return false;
+
 	ofVec3f translate;
 	ofQuaternion rotate;
 	
-	for (int i = 0; i < joint->channel_type.size(); i++)
+	for (const ofxBvhJoint::CHANNEL type : joint->channel_type)
 	{
-		float v = frame_data[index++];
-		ofxBvhJoint::CHANNEL t = joint->channel_type[i];
+		if (index >= frame_data.size()) return false;
+		const float value = frame_data[index++];
 		
-		if (t == ofxBvhJoint::X_POSITION)
-			translate.x = v;
-		else if (t == ofxBvhJoint::Y_POSITION)
-			translate.y = v;
-		else if (t == ofxBvhJoint::Z_POSITION)
-			translate.z = v;
-		else if (t == ofxBvhJoint::X_ROTATION)
-			rotate = ofQuaternion(v, ofVec3f(1, 0, 0)) * rotate;
-		else if (t == ofxBvhJoint::Y_ROTATION)
-			rotate = ofQuaternion(v, ofVec3f(0, 1, 0)) * rotate;
-		else if (t == ofxBvhJoint::Z_ROTATION)
-			rotate = ofQuaternion(v, ofVec3f(0, 0, 1)) * rotate;
+		if (type == ofxBvhJoint::X_POSITION)
+			translate.x = value;
+		else if (type == ofxBvhJoint::Y_POSITION)
+			translate.y = value;
+		else if (type == ofxBvhJoint::Z_POSITION)
+			translate.z = value;
+		else if (type == ofxBvhJoint::X_ROTATION)
+			rotate = ofQuaternion(value, ofVec3f(1, 0, 0)) * rotate;
+		else if (type == ofxBvhJoint::Y_ROTATION)
+			rotate = ofQuaternion(value, ofVec3f(0, 1, 0)) * rotate;
+		else if (type == ofxBvhJoint::Z_ROTATION)
+			rotate = ofQuaternion(value, ofVec3f(0, 0, 1)) * rotate;
 	}
 	
 	translate += joint->initial_offset;
@@ -122,39 +213,56 @@ void ofxBvh::updateJoint(int& index, const FrameData& frame_data, ofxBvhJoint *j
 		joint->global_matrix.postMult(joint->parent->global_matrix);
 	}
 	
-	for (int i = 0; i < joint->children.size(); i++)
+	for (ofxBvhJoint* child : joint->children)
 	{
-		updateJoint(index, frame_data, joint->children[i]);
+		if (!updateJoint(index, frame_data, child)) return false;
 	}
+
+	return true;
 }
 
 void ofxBvh::update()
 {
+	update(ofGetLastFrameTime());
+}
+
+void ofxBvh::update(float deltaSeconds)
+{
 	frame_new = false;
+	if (!isLoaded()) return;
 	
-	if (playing && ofGetFrameNum() > 1)
+	if (playing && std::isfinite(deltaSeconds) && deltaSeconds > 0.0f)
 	{
-		int last_index = getFrame();
-		
-		play_head += ofGetLastFrameTime() * rate;
-		int index = getFrame();
+		const int last_index = getFrame();
+		const double duration = static_cast<double>(getDuration());
+		const double nextPlayHead = static_cast<double>(play_head)
+			+ static_cast<double>(deltaSeconds) * static_cast<double>(rate);
+		if (loop)
+		{
+			play_head = static_cast<float>(std::fmod(nextPlayHead, duration));
+			if (play_head < 0.0f) play_head += duration;
+		}
+		else if (nextPlayHead >= duration)
+		{
+			play_head = static_cast<float>(duration) - frame_time;
+			playing = false;
+		}
+		else if (nextPlayHead < 0.0)
+		{
+			play_head = 0.0f;
+			playing = false;
+		}
+		else
+		{
+			play_head = static_cast<float>(nextPlayHead);
+		}
+
+		const int index = getFrame();
 		
 		if (index != last_index)
 		{
 			need_update = true;
-			
-			currentFrame = frames[index];
-			
-			if (index >= frames.size())
-			{
-				if (loop)
-					play_head = 0;
-				else
-					playing = false;
-			}
-			
-			if (play_head < 0)
-				play_head = 0;
+			currentFrame = frames[static_cast<size_t>(index)];
 		}
 	}
 	
@@ -163,13 +271,19 @@ void ofxBvh::update()
 		need_update = false;
 		frame_new = true;
 		
-		int index = 0;
-		updateJoint(index, currentFrame, root);
+		size_t index = 0;
+		if (!updateJoint(index, currentFrame, root) || index != currentFrame.size())
+		{
+			ofLogError("ofxBvh") << "invalid channel data while updating";
+			unload();
+		}
 	}
 }
 
 void ofxBvh::draw()
 {
+	if (!isLoaded()) return;
+
 	ofPushStyle();
 	ofFill();
 	
@@ -183,13 +297,13 @@ void ofxBvh::draw()
 		{
 			ofSetColor(ofColor::yellow);
 			billboard();
-			ofCircle(0, 0, 6);
+			ofDrawCircle(0, 0, 6);
 		}
 		else if (o->getChildren().size() == 1)
 		{
 			ofSetColor(ofColor::white);		
 			billboard();
-			ofCircle(0, 0, 2);
+			ofDrawCircle(0, 0, 2);
 		}
 		else if (o->getChildren().size() > 1)
 		{
@@ -199,7 +313,7 @@ void ofxBvh::draw()
 				ofSetColor(ofColor::green);
 			
 			billboard();
-			ofCircle(0, 0, 4);
+			ofDrawCircle(0, 0, 4);
 		}
 		
 		glPopMatrix();
@@ -208,43 +322,55 @@ void ofxBvh::draw()
 	ofPopStyle();
 }
 
-bool ofxBvh::isFrameNew()
+bool ofxBvh::isFrameNew() const
 {
 	return frame_new;
 }
 
+bool ofxBvh::isLoaded() const
+{
+	return root && !frames.empty() && frame_time > 0.0f;
+}
+
 void ofxBvh::setFrame(int index)
 {
-	if (ofInRange(index, 0, frames.size()) && getFrame() != index)
+	if (index >= 0 && index < static_cast<int>(frames.size()) && getFrame() != index)
 	{
-		currentFrame = frames[index];
-		play_head = (float)index * frame_time;
+		currentFrame = frames[static_cast<size_t>(index)];
+		play_head = static_cast<float>(index) * frame_time;
 		
 		need_update = true;
 	}
 }
 
-int ofxBvh::getFrame()
+int ofxBvh::getFrame() const
 {
-	return floor(play_head / frame_time);
+	if (!isLoaded() || !std::isfinite(play_head)) return 0;
+	return ofClamp(static_cast<int>(std::floor(play_head / frame_time + 1e-4f)),
+		0, static_cast<int>(frames.size()) - 1);
 }
 
 void ofxBvh::setPosition(float pos)
 {
-	setFrame((float)frames.size() * pos);
+	if (!isLoaded() || !std::isfinite(pos)) return;
+	const float clamped = ofClamp(pos, 0.0f, 1.0f);
+	const int frame = clamped >= 1.0f
+		? static_cast<int>(frames.size()) - 1
+		: static_cast<int>(clamped * static_cast<float>(frames.size()));
+	setFrame(frame);
 }
 
-float ofxBvh::getPosition()
+float ofxBvh::getPosition() const
 {
-	return play_head / (float)frames.size();
+	return isLoaded() ? ofClamp(play_head / getDuration(), 0.0f, 1.0f) : 0.0f;
 }
 
-float ofxBvh::getDuration()
+float ofxBvh::getDuration() const
 {
-	return (float)frames.size() * frame_time;
+	return static_cast<float>(frames.size()) * frame_time;
 }
 
-void ofxBvh::parseHierarchy(const string& data)
+bool ofxBvh::parseHierarchy(const string& data)
 {
 	vector<string> tokens;
 	string token;
@@ -253,11 +379,9 @@ void ofxBvh::parseHierarchy(const string& data)
 	num_frames = 0;
 	frame_time = 0;
 	
-	for (int i = 0; i < data.size(); i++)
+	for (const char c : data)
 	{
-		char c = data[i];
-		
-		if (isspace(c))
+		if (std::isspace(static_cast<unsigned char>(c)))
 		{
 			if (!token.empty()) tokens.push_back(token);
 			token.clear();
@@ -267,20 +391,40 @@ void ofxBvh::parseHierarchy(const string& data)
 			token.push_back(c);
 		}
 	}
+	if (!token.empty()) tokens.push_back(token);
 	
-	int index = 0;
-	while (index < tokens.size())
+	if (tokens.size() < 3 || tokens[0] != "HIERARCHY" || tokens[1] != "ROOT")
 	{
-		if (tokens[index++] == "ROOT")
-		{
-			root = parseJoint(index, tokens, NULL);
-		}
+		ofLogError("ofxBvh") << "hierarchy must begin with HIERARCHY ROOT";
+		return false;
 	}
+
+	size_t index = 2;
+	root = parseJoint(index, tokens, nullptr);
+	if (!root) return false;
+	if (index != tokens.size())
+	{
+		ofLogError("ofxBvh") << "unexpected data after ROOT joint";
+		return false;
+	}
+	return total_channels > 0;
 }
 
-ofxBvhJoint* ofxBvh::parseJoint(int& index, vector<string> &tokens, ofxBvhJoint *parent)
+ofxBvhJoint* ofxBvh::parseJoint(size_t& index, const vector<string>& tokens, ofxBvhJoint *parent)
 {
-	string name = tokens[index++];
+	if (index >= tokens.size())
+	{
+		ofLogError("ofxBvh") << "joint name is missing";
+		return nullptr;
+	}
+
+	const string name = tokens[index++];
+	if (index >= tokens.size() || tokens[index++] != "{")
+	{
+		ofLogError("ofxBvh") << "joint " << name << " has no opening brace";
+		return nullptr;
+	}
+
 	ofxBvhJoint *joint = new ofxBvhJoint(name, parent);
 	if (parent) parent->children.push_back(joint);
 	
@@ -289,148 +433,176 @@ ofxBvhJoint* ofxBvh::parseJoint(int& index, vector<string> &tokens, ofxBvhJoint 
 	joints.push_back(joint);
 	jointMap[name] = joint;
 	
+	bool closed = false;
 	while (index < tokens.size())
 	{
-		string token = tokens[index++];
+		const string token = tokens[index++];
 		
 		if (token == "OFFSET")
 		{
-			joint->initial_offset.x = ofToFloat(tokens[index++]);
-			joint->initial_offset.y = ofToFloat(tokens[index++]);
-			joint->initial_offset.z = ofToFloat(tokens[index++]);
+			if (tokens.size() - index < 3
+				|| !parseFloatToken(tokens[index], joint->initial_offset.x)
+				|| !parseFloatToken(tokens[index + 1], joint->initial_offset.y)
+				|| !parseFloatToken(tokens[index + 2], joint->initial_offset.z))
+			{
+				ofLogError("ofxBvh") << "invalid OFFSET for joint " << name;
+				return nullptr;
+			}
+			index += 3;
 			
 			joint->offset = joint->initial_offset;
 		}
 		else if (token == "CHANNELS")
 		{
-			int num = ofToInt(tokens[index++]);
+			int num = 0;
+			if (index >= tokens.size() || !parseIntToken(tokens[index++], num)
+				|| num < 0 || static_cast<size_t>(num) > tokens.size() - index
+				|| num > std::numeric_limits<int>::max() - total_channels)
+			{
+				ofLogError("ofxBvh") << "invalid CHANNELS count for joint " << name;
+				return nullptr;
+			}
 			
-			joint->channel_type.resize(num);
+			joint->channel_type.resize(static_cast<size_t>(num));
 			total_channels += num;
 			
 			for (int i = 0; i < num; i++)
 			{
-				string ch = tokens[index++];
-				
-				char axis = tolower(ch[0]);
-				char elem = tolower(ch[1]);
-				
-				if (elem == 'p')
-				{
-					if (axis == 'x')
-						joint->channel_type[i] = ofxBvhJoint::X_POSITION;
-					else if (axis == 'y')
-						joint->channel_type[i] = ofxBvhJoint::Y_POSITION;
-					else if (axis == 'z')
-						joint->channel_type[i] = ofxBvhJoint::Z_POSITION;
-					else
-					{
-						ofLogError("ofxBvh", "invalid bvh format");
-						return NULL;
-					}
-				}
-				else if (elem == 'r')
-				{
-					if (axis == 'x')
-						joint->channel_type[i] = ofxBvhJoint::X_ROTATION;
-					else if (axis == 'y')
-						joint->channel_type[i] = ofxBvhJoint::Y_ROTATION;
-					else if (axis == 'z')
-						joint->channel_type[i] = ofxBvhJoint::Z_ROTATION;
-					else
-					{
-						ofLogError("ofxBvh", "invalid bvh format");
-						return NULL;
-					}
-				}
+				const string channel = ofToLower(tokens[index++]);
+				if (channel == "xposition")
+					joint->channel_type[i] = ofxBvhJoint::X_POSITION;
+				else if (channel == "yposition")
+					joint->channel_type[i] = ofxBvhJoint::Y_POSITION;
+				else if (channel == "zposition")
+					joint->channel_type[i] = ofxBvhJoint::Z_POSITION;
+				else if (channel == "xrotation")
+					joint->channel_type[i] = ofxBvhJoint::X_ROTATION;
+				else if (channel == "yrotation")
+					joint->channel_type[i] = ofxBvhJoint::Y_ROTATION;
+				else if (channel == "zrotation")
+					joint->channel_type[i] = ofxBvhJoint::Z_ROTATION;
 				else
 				{
-					ofLogError("ofxBvh", "invalid bvh format");
-					return NULL;
+					ofLogError("ofxBvh") << "invalid channel name for joint " << name;
+					return nullptr;
 				}
 			}
 		}
 		else if (token == "JOINT"
 				 || token == "End")
 		{
-			parseJoint(index, tokens, joint);
+			if (token == "End" && (index >= tokens.size() || tokens[index] != "Site"))
+			{
+				ofLogError("ofxBvh") << "invalid End Site declaration";
+				return nullptr;
+			}
+			if (!parseJoint(index, tokens, joint)) return nullptr;
 		}
 		else if (token == "}")
 		{
+			closed = true;
 			break;
+		}
+		else
+		{
+			ofLogError("ofxBvh") << "unexpected hierarchy token: " << token;
+			return nullptr;
 		}
 	}
 	
+	if (!closed)
+	{
+		ofLogError("ofxBvh") << "joint " << name << " has no closing brace";
+		return nullptr;
+	}
+
 	return joint;
 }
 
-void ofxBvh::parseMotion(const string& data)
+bool ofxBvh::parseMotion(const string& data)
 {
 	vector<string> lines = ofSplitString(data, "\n", true, true);
-	
-	int index = 0;
-	
+	size_t index = 0;
+	if (index >= lines.size() || ofTrim(lines[index++]) != "MOTION")
+	{
+		ofLogError("ofxBvh") << "motion section must begin with MOTION";
+		return false;
+	}
+
+	string value;
+	if (index >= lines.size()
+		|| !valueForHeader(ofTrim(lines[index++]), "Frames", value)
+		|| !parseIntToken(value, num_frames)
+		|| num_frames <= 0)
+	{
+		ofLogError("ofxBvh") << "invalid Frames header";
+		return false;
+	}
+	if (index >= lines.size()
+		|| !valueForHeader(ofTrim(lines[index++]), "Frame Time", value)
+		|| !parseFloatToken(value, frame_time)
+		|| frame_time <= 0.0f
+		|| total_channels <= 0)
+	{
+		ofLogError("ofxBvh") << "invalid Frame Time header";
+		return false;
+	}
+
 	while (index < lines.size())
 	{
-		string line = lines[index];
-		
-		if (line.empty())
+		const string line = ofTrim(lines[index++]);
+		if (line.empty()) continue;
+
+		std::istringstream stream(line);
+		string channel;
+		FrameData frame;
+		while (stream >> channel)
 		{
-			index++;
-			continue;
+			float value = 0.0f;
+			if (!parseFloatToken(channel, value))
+			{
+				ofLogError("ofxBvh") << "invalid motion channel value";
+				return false;
+			}
+			frame.push_back(value);
 		}
-		
-		if (line.find("MOTION") != string::npos) {}
-		else if (line.find("Frames:") != string::npos)
+
+		if (frame.size() != static_cast<size_t>(total_channels))
 		{
-			num_frames = ofToInt(ofSplitString(line, ":")[1]);
+			ofLogError("ofxBvh") << "channel size mismatch";
+			return false;
 		}
-		else if (line.find("Frame Time:") != string::npos)
-		{
-			frame_time = ofToFloat(ofSplitString(line, ":")[1]);
-		}
-		else break;
-		
-		index++;
+
+		frames.push_back(std::move(frame));
 	}
 	
-	while (index < lines.size())
+	if (static_cast<size_t>(num_frames) != frames.size())
 	{
-		string line = lines[index];
-		vector<string> channels = ofSplitString(line, " ");
-
-		if (channels.size() != total_channels)
-		{
-			ofLogError("ofxBvh", "channel size mismatch");
-			return;
-		}
-		
-		char buf[64];
-		FrameData data;
-		for (int i = 0; i < channels.size(); i++)
-		{
-			float v;
-			sscanf(channels[i].c_str(), "%f", &v);
-			data.push_back(v);
-		}
-		
-		frames.push_back(data);
-		
-		index++;
+		ofLogError("ofxBvh") << "frame size mismatch";
+		return false;
 	}
-	
-	if (num_frames != frames.size())
-		ofLogWarning("ofxBvh", "frame size mismatch");
+	const double duration = static_cast<double>(num_frames)
+		* static_cast<double>(frame_time);
+	if (!std::isfinite(duration)
+		|| duration > static_cast<double>(std::numeric_limits<float>::max()))
+	{
+		ofLogError("ofxBvh") << "motion duration is out of range";
+		return false;
+	}
+
+	return true;
 }
 
-const ofxBvhJoint* ofxBvh::getJoint(int index)
+const ofxBvhJoint* ofxBvh::getJoint(int index) const
 {
-	return joints.at(index);
+	if (index < 0 || index >= static_cast<int>(joints.size())) return nullptr;
+	return joints[static_cast<size_t>(index)];
 }
 
-const ofxBvhJoint* ofxBvh::getJoint(string name)
+const ofxBvhJoint* ofxBvh::getJoint(const string& name) const
 {
-	return jointMap[name];
+	const auto it = jointMap.find(name);
+	return it == jointMap.end() ? nullptr : it->second;
 }
 
 static inline void billboard()
@@ -438,23 +610,43 @@ static inline void billboard()
 	GLfloat m[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, m);
 	
-	float inv_len;
-	
+	constexpr float epsilon = 1e-12f;
+
 	m[8] = -m[12];
 	m[9] = -m[13];
 	m[10] = -m[14];
-	inv_len = 1. / sqrt(m[8] * m[8] + m[9] * m[9] + m[10] * m[10]);
-	m[8] *= inv_len;
-	m[9] *= inv_len;
-	m[10] *= inv_len;
+	float lengthSquared = m[8] * m[8] + m[9] * m[9] + m[10] * m[10];
+	if (lengthSquared > epsilon)
+	{
+		const float inverseLength = 1.0f / std::sqrt(lengthSquared);
+		m[8] *= inverseLength;
+		m[9] *= inverseLength;
+		m[10] *= inverseLength;
+	}
+	else
+	{
+		m[8] = 0.0f;
+		m[9] = 0.0f;
+		m[10] = 1.0f;
+	}
 	
 	m[0] = -m[14];
 	m[1] = 0.0;
 	m[2] = m[12];
-	inv_len = 1. / sqrt(m[0] * m[0] + m[1] * m[1] + m[2] * m[2]);
-	m[0] *= inv_len;
-	m[1] *= inv_len;
-	m[2] *= inv_len;
+	lengthSquared = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
+	if (lengthSquared > epsilon)
+	{
+		const float inverseLength = 1.0f / std::sqrt(lengthSquared);
+		m[0] *= inverseLength;
+		m[1] *= inverseLength;
+		m[2] *= inverseLength;
+	}
+	else
+	{
+		m[0] = 1.0f;
+		m[1] = 0.0f;
+		m[2] = 0.0f;
+	}
 	
 	m[4] = m[9] * m[2] - m[10] * m[1];
 	m[5] = m[10] * m[0] - m[8] * m[2];

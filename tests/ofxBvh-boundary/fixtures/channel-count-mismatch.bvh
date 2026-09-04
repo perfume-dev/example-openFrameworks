@@ -1,0 +1,10 @@
+HIERARCHY
+ROOT Root
+{
+ OFFSET 0 0 0
+ CHANNELS 2 Xposition Yposition
+}
+MOTION
+Frames: 1
+Frame Time: 0.033333
+0

@@ -7,43 +7,48 @@ void testApp::setup(){
 	
 	ofBackground(0);
 	
-	bvh.resize(3);
-	
 	// setup bvh
-	bvh[0].load("A_test.bvh");
-	bvh[1].load("B_test.bvh");
-	bvh[2].load("C_test.bvh");
+	assetsReady = bvh[0].load("A_test.bvh");
+	assetsReady = bvh[1].load("B_test.bvh") && assetsReady;
+	assetsReady = bvh[2].load("C_test.bvh") && assetsReady;
 	
-	for (int i = 0; i < bvh.size(); i++)
+	for (auto& motion : bvh)
 	{
-		bvh[i].play();
-		bvh[i].setLoop(true);
+		motion.play();
+		motion.setLoop(true);
 	}
 }
 
 //--------------------------------------------------------------
 void testApp::update()
 {
-	for (int i = 0; i < bvh.size(); i++)
+	for (auto& motion : bvh)
 	{
-		bvh[i].update();
+		motion.update();
 	}
 }
 
 //--------------------------------------------------------------
 void testApp::draw(){
-	glEnable(GL_DEPTH_TEST);
+	ofEnableDepthTest();
 	
 	ofEnableBlendMode(OF_BLENDMODE_ALPHA);
 
 	cam.begin();
 	
-	for (int i = 0; i < bvh.size(); i++)
+	for (auto& motion : bvh)
 	{
-		bvh[i].draw();
+		motion.draw();
 	}
 	
 	cam.end();
+
+	ofDisableDepthTest();
+	if (!assetsReady)
+	{
+		ofSetColor(255);
+		ofDrawBitmapString("Unable to load the bundled BVH files.", 20, 30);
+	}
 
 }
 

@@ -1,25 +1,53 @@
 #include "testApp.h"
 
+namespace {
+
+const std::array<const char*, 3> kPerfumeMotionFiles = {
+	"bvhfiles/aachan.bvh",
+	"bvhfiles/kashiyuka.bvh",
+	"bvhfiles/nocchi.bvh"
+};
+
+const std::array<const char*, 3> kBundledMotionFiles = {
+	"../../../example-bvh/bin/data/A_test.bvh",
+	"../../../example-bvh/bin/data/B_test.bvh",
+	"../../../example-bvh/bin/data/C_test.bvh"
+};
+
+bool loadMotionFiles(std::array<ofxBvh, 3>& motions) {
+	bool loaded = true;
+	for (size_t i = 0; i < motions.size(); ++i) {
+		if (!motions[i].load(kPerfumeMotionFiles[i])) {
+			ofLogWarning("marching-cubes")
+				<< "Using bundled motion fallback for " << kPerfumeMotionFiles[i];
+			loaded = motions[i].load(kBundledMotionFiles[i]) && loaded;
+		}
+	}
+	return loaded;
+}
+
+} // namespace
+
 float startTime = 0.02;
 
 //--------------------------------------------------------------
 void testApp::setup() {
 	ofSetFrameRate(60);
 	ofSetVerticalSync(true);
-	
+
 	rotate = 0;
 	
-	bvh[0].load("bvhfiles/kashiyuka.bvh");
-	bvh[1].load("bvhfiles/nocchi.bvh");
-	bvh[2].load("bvhfiles/aachan.bvh");
+	assetsReady = loadMotionFiles(bvh);
 	
-	for (int i = 0; i < 3; i++)	{
-		bvh[i].play();
+	audioReady = ofFile::doesFileExist("Perfume_globalsite_sound.wav")
+		&& track.load("Perfume_globalsite_sound.wav");
+	if (audioReady) {
+		track.setLoop(true);
+		track.play();
+	} else {
+		ofLogNotice("marching-cubes")
+			<< "Audio file not found; using a silent internal clock.";
 	}
-	
-	track.loadSound("Perfume_globalsite_sound.wav");
-	track.play();
-	track.setLoop(true);
 	
 	camera.setFov(30);
 	camera.setDistance(700);
@@ -37,7 +65,7 @@ void testApp::setup() {
 	metaBalls.resize(metaballNum);
 	
 	int n = 0;
-	for (int i = 0; i < 3; i++){
+	for (size_t i = 0; i < bvh.size(); ++i){
 		for (int j = 0; j < bvh[i].getNumJoints(); j++) {
 			const ofxBvhJoint *o = bvh[i].getJoint(j);
 			if (o->isSite()) {
@@ -56,18 +84,22 @@ void testApp::setup() {
 
 //--------------------------------------------------------------
 void testApp::update(){
-	float t = (track.getPosition() * 64.28);
-	t = t / bvh[0].getDuration();
-	
-	for (int i = 0; i < 3; i++)	{
-		bvh[i].setPosition(t);
-		bvh[i].update();
+	if (!assetsReady) return;
+	const float motionDuration = bvh[0].getDuration();
+	const float motionSeconds = audioReady
+		? track.getPosition() * track.getDuration()
+		: std::fmod(ofGetElapsedTimef(), motionDuration);
+	const float t = ofClamp(motionSeconds / motionDuration, 0.0f, 1.0f);
+
+	for (auto& motion : bvh) {
+		motion.setPosition(t);
+		motion.update();
 	}
-	
+
 	marchingCubes.resetIsoValues();
 	
 	int n = 0;
-	for (int i = 0; i < 3; i++){
+	for (size_t i = 0; i < bvh.size(); ++i){
 		for (int j = 0; j < bvh[i].getNumJoints(); j++) {
 			const ofxBvhJoint *o = bvh[i].getJoint(j);
 			if (o->isSite()) {
@@ -82,7 +114,7 @@ void testApp::update(){
 		}
 	}
 	
-	marchingCubes.update(0.17, true);
+	marchingCubes.update(threshold, true);
 }
 
 //--------------------------------------------------------------
@@ -93,7 +125,7 @@ void testApp::draw(){
 	ofPushMatrix();
 	{
 		ofTranslate(0, -80);
-		ofRotate(5, 1, 0, 0);
+		ofRotateDeg(5, 1, 0, 0);
 		ofScale(1, 1, 1);
 		
 		// draw MarchingCubes
@@ -117,6 +149,12 @@ void testApp::draw(){
 	
 	ofPopMatrix();
 	camera.end();
+	ofSetColor(255);
+
+	if (!assetsReady)
+		ofDrawBitmapString("Motion data is missing. See README.md.", 10, 20);
+	else if (!audioReady)
+		ofDrawBitmapString("Audio data is missing; running with a silent clock.", 10, 20);
 	
 }
 

@@ -1,25 +1,55 @@
 #include "testApp.h"
 
+#include <array>
+#include <memory>
+
+namespace {
+
+const std::array<const char*, 3> kPerfumeMotionFiles = {
+	"bvhfiles/aachan.bvh",
+	"bvhfiles/kashiyuka.bvh",
+	"bvhfiles/nocchi.bvh"
+};
+
+const std::array<const char*, 3> kBundledMotionFiles = {
+	"../../../example-bvh/bin/data/A_test.bvh",
+	"../../../example-bvh/bin/data/B_test.bvh",
+	"../../../example-bvh/bin/data/C_test.bvh"
+};
+
+bool loadMotionFiles(std::array<ofxBvh, 3>& motions) {
+	bool loaded = true;
+	for (size_t i = 0; i < motions.size(); ++i) {
+		if (!motions[i].load(kPerfumeMotionFiles[i])) {
+			ofLogWarning("particle-motion-example")
+				<< "Using bundled motion fallback for " << kPerfumeMotionFiles[i];
+			loaded = motions[i].load(kBundledMotionFiles[i]) && loaded;
+		}
+	}
+	return loaded;
+}
+
+} // namespace
+
 class Particle
 {
 public:
 	
-	ofVec3f pos;
-	ofVec3f vel;
-	ofVec3f force;
+	ofVec3f pos = {0, 0, 0};
+	ofVec3f vel = {0, 0, 0};
+	ofVec3f force = {0, 0, 0};
 };
 
 class Tracker
 {
 public:
 	
-	const ofxBvhJoint *joint, *root;
+	const ofxBvhJoint *joint = nullptr;
 	deque<ofVec3f> samples;
 	
-	void setup(const ofxBvhJoint *o, const ofxBvhJoint *r)
+	void setup(const ofxBvhJoint *o)
 	{
 		joint = o;
-		root = r;
 	}
 	
 	void update(vector<Particle>& particles)
@@ -40,18 +70,17 @@ public:
 			const float m = 1.1;
 			const float B = 1.6;
 			
-			for (int i = 0; i < particles.size(); i++)
+			for (auto& particle : particles)
 			{
-				Particle &o = particles[i];
-				ofVec3f dist = (o.pos - p);
-				float r = dist.squareLength();
+				ofVec3f dist = particle.pos - p;
+				float r = dist.lengthSquared();
 				
 				if (r > 0 && r < 30*30)
 				{
 					r = sqrt(r);
 					dist /= r;
 					
-					o.force += ((A / pow(r, n)) - (B / pow(r, m))) * dist * 2;
+					particle.force += ((A / pow(r, n)) - (B / pow(r, m))) * dist * 2;
 				}
 			}
 		}
@@ -62,7 +91,7 @@ public:
 		if (samples.empty()) return 0;
 		
 		float v = 0;
-		for (int i = 0; i < samples.size() - 1; i++)
+		for (size_t i = 0; i + 1 < samples.size(); ++i)
 			v += samples[i].distance(samples[i + 1]);
 		
 		return v;
@@ -70,11 +99,11 @@ public:
 	
 	float dot()
 	{
-		if (samples.empty()) return 0;
+		if (samples.size() < 3) return 0;
 		
 		float v = 0;
 		
-		for (int i = 1; i < samples.size() - 1; i++)
+		for (size_t i = 1; i + 1 < samples.size(); ++i)
 		{
 			const ofVec3f &v0 = samples[i - 1];
 			const ofVec3f &v1 = samples[i];
@@ -83,8 +112,8 @@ public:
 			if (v0.squareDistance(v1) == 0) continue;
 			if (v1.squareDistance(v2) == 0) continue;
 			
-			const ofVec3f d0 = (v0 - v1).normalized();
-			const ofVec3f d1 = (v1 - v2).normalized();
+			const ofVec3f d0 = (v0 - v1).getNormalized();
+			const ofVec3f d1 = (v1 - v2).getNormalized();
 			
 			v += (d0).dot(d1);
 		}
@@ -94,6 +123,8 @@ public:
 	
 	void draw()
 	{
+		if (samples.size() < 2) return;
+
 		float len = length();
 		len = ofMap(len, 30, 40, 0, 1, true);
 		
@@ -101,9 +132,10 @@ public:
 		d = ofMap(d, 1, 0, 255, 0, true);
 		
 		glBegin(GL_LINE_STRIP);
-		for (int i = 0; i < samples.size(); i++)
+		for (size_t i = 0; i < samples.size(); ++i)
 		{
-			float a = ofMap(i, 0, samples.size() - 1, 1, 0, true);
+			float a = ofMap(static_cast<float>(i), 0.0f,
+				static_cast<float>(samples.size() - 1), 1.0f, 0.0f, true);
 			ofSetColor(d * len, 140 * a);
 			glVertex3fv(samples[i].getPtr());
 		}
@@ -115,73 +147,63 @@ class ParticleShape
 {
 public:
 	
-	ofxBvh *bvh;
+	ofxBvh *bvh = nullptr;
 	
-	vector<Tracker*> tracker;
+	vector<std::unique_ptr<Tracker>> tracker;
 	
 	vector<Particle> particles;
-	int particle_index;
+	size_t particle_index = 0;
 	
 	void setup(ofxBvh &o)
 	{
 		bvh = &o;
 		
-		for (int i = 1; i < o.getNumJoints(); i++)
+		for (int i = 1; i < o.getNumJoints(); ++i)
 		{
 			if (bvh->getJoint(i)->getName().find("Chest") == string::npos)
 			{
-				Tracker *t = new Tracker;
-				t->setup(bvh->getJoint(i), bvh->getJoint(0));
-				tracker.push_back(t);
+				auto item = std::make_unique<Tracker>();
+				item->setup(bvh->getJoint(i));
+				tracker.push_back(std::move(item));
 			}
 		}
 		
-		particle_index = 0;
 		particles.resize(15000);
-		for (int i = 0; i < particles.size(); i++)
-		{
-			Particle &p = particles[i];
-			p.pos.set(0, 0, 0);
-			p.vel.set(0, 0, 0);
-		}
 	}
 	
 	void update()
 	{
 		bvh->update();
 		
-		for (int i = 0; i < particles.size(); i++)
+		for (auto& particle : particles)
 		{
-			Particle &p = particles[i];
-			p.force.set(0, 0, 0);
+			particle.force.set(0, 0, 0);
 		}
 		
 		if (bvh->isFrameNew())
 		{
-			for (int i = 0; i < tracker.size(); i++)
+			for (auto& item : tracker)
 			{
 				// update force
-				tracker[i]->update(particles);
+				item->update(particles);
 				
-				const ofVec3f &p = tracker[i]->joint->getPosition();
+				const ofVec3f &p = item->joint->getPosition();
 				
 				// emit 10 particle every frame
-				for (int i = 0; i < 10; i++)
+				for (int i = 0; i < 10; ++i)
 				{
 					particles[particle_index].pos.set(p);
 					
 					particle_index++;
-					if (particle_index > particles.size())
+					if (particle_index >= particles.size())
 						particle_index = 0;
 				}
 			}
 		}
 		
 		// update particle position
-		for (int i = 0; i < particles.size(); i++)
+		for (auto& p : particles)
 		{
-			Particle &p = particles[i];
-			
 			p.force.y += -0.1;
 			p.vel *= 0.98;
 			
@@ -200,27 +222,24 @@ public:
 	{
 		// bvh->draw();
 
-		for (int i = 0; i < tracker.size(); i++)
+		for (auto& item : tracker)
 		{
-			tracker[i]->draw();
+			item->draw();
 		}
 		
 		ofSetColor(255, 15);
 		glBegin(GL_POINTS);
-		for (int i = 0; i < particles.size(); i++)
+		for (auto& p : particles)
 		{
-			Particle &p = particles[i];
 			glVertex3fv(p.pos.getPtr());
 		}
 		glEnd();
 	}
 };
 
-const float trackDuration = 64.28;
-
-const size_t NUM_ACTOR = 3;
-vector<ParticleShape> particle_shapes;
-vector<ofxBvh> bvh;
+constexpr size_t NUM_ACTOR = 3;
+std::array<ParticleShape, NUM_ACTOR> particle_shapes;
+std::array<ofxBvh, NUM_ACTOR> bvh;
 
 ofSoundPlayer player;
 
@@ -234,37 +253,42 @@ void testApp::setup()
 	
 	ofBackground(0);
 	
-	bvh.resize(NUM_ACTOR);
-	particle_shapes.resize(NUM_ACTOR);
+	assetsReady = loadMotionFiles(bvh);
 	
-	// You have to get motion and sound data from http://www.perfume-global.com
-	
-	bvh[0].load("bvhfiles/aachan.bvh");
-	bvh[1].load("bvhfiles/kashiyuka.bvh");
-	bvh[2].load("bvhfiles/nocchi.bvh");
-	
-	for (int i = 0; i < NUM_ACTOR; i++)
+	for (size_t i = 0; i < NUM_ACTOR; ++i)
 	{
 		bvh[i].setFrame(1);
-		particle_shapes[i].setup(bvh[i]);
+		if (assetsReady) particle_shapes[i].setup(bvh[i]);
 	}
 	
-	player.loadSound("Perfume_globalsite_sound.wav");
-	player.play();
+	audioReady = ofFile::doesFileExist("Perfume_globalsite_sound.wav")
+		&& player.load("Perfume_globalsite_sound.wav");
+	if (audioReady) {
+		player.setLoop(true);
+		player.play();
+	} else {
+		ofLogNotice("particle-motion-example")
+			<< "Audio file not found; using a silent internal clock.";
+	}
 }
 
 //--------------------------------------------------------------
 void testApp::update()
 {
-	float t = (player.getPosition() * trackDuration);
+	if (!assetsReady) return;
+	const float motionDuration = bvh[0].getDuration();
+	const float motionSeconds = audioReady
+		? player.getPosition() * player.getDuration()
+		: std::fmod(ofGetElapsedTimef(), motionDuration);
+	const float t = ofClamp(motionSeconds / motionDuration, 0.0f, 1.0f);
 	
 	ofVec3f avg;
 	
-	for (int i = 0; i < NUM_ACTOR; i++)
+	for (size_t i = 0; i < NUM_ACTOR; ++i)
 	{
 		ofxBvh *o = particle_shapes[i].bvh;
 		
-		o->setPosition(t / o->getDuration());
+		o->setPosition(t);
 		particle_shapes[i].update();
 		
 		avg += o->getJoint(0)->getPosition();
@@ -278,7 +302,7 @@ void testApp::update()
 //--------------------------------------------------------------
 void testApp::draw()
 {
-	glDisable(GL_DEPTH_TEST);
+	ofDisableDepthTest();
 	ofEnableBlendMode(OF_BLENDMODE_ADD);
 	
 	// smooth particle
@@ -292,20 +316,28 @@ void testApp::draw()
 	glLineWidth(2);
 	
 	cam.begin();
-	ofRotateY(ofGetElapsedTimef() * 10);
+	ofRotateYDeg(ofGetElapsedTimef() * 10);
 	ofTranslate(-center);
 	
-	for (int i = 0; i < NUM_ACTOR; i++)
+	for (size_t i = 0; i < NUM_ACTOR; ++i)
 	{
 		particle_shapes[i].draw();
 	}
 	
 	cam.end();
+	ofEnableBlendMode(OF_BLENDMODE_ALPHA);
+	ofSetColor(255);
+
+	if (!assetsReady)
+		ofDrawBitmapString("Motion data is missing. See README.md.", 10, 20);
+	else if (!audioReady)
+		ofDrawBitmapString("Audio data is missing; running with a silent clock.", 10, 20);
 }
 
 //--------------------------------------------------------------
 void testApp::keyPressed(int key)
 {
+	if (!audioReady) return;
 	if (player.getSpeed() > 0)
 		player.setSpeed(0);
 	else

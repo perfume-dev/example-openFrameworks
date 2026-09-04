@@ -1,5 +1,35 @@
 #include "testApp.h"
 
+#include <memory>
+
+namespace {
+
+const std::array<const char*, 3> kPerfumeMotionFiles = {
+	"bvhfiles/aachan.bvh",
+	"bvhfiles/kashiyuka.bvh",
+	"bvhfiles/nocchi.bvh"
+};
+
+const std::array<const char*, 3> kBundledMotionFiles = {
+	"../../../example-bvh/bin/data/A_test.bvh",
+	"../../../example-bvh/bin/data/B_test.bvh",
+	"../../../example-bvh/bin/data/C_test.bvh"
+};
+
+bool loadMotionFiles(std::array<ofxBvh, 3>& motions) {
+	bool loaded = true;
+	for (size_t i = 0; i < motions.size(); ++i) {
+		if (!motions[i].load(kPerfumeMotionFiles[i])) {
+			ofLogWarning("motion-visualization")
+				<< "Using bundled motion fallback for " << kPerfumeMotionFiles[i];
+			loaded = motions[i].load(kBundledMotionFiles[i]) && loaded;
+		}
+	}
+	return loaded;
+}
+
+} // namespace
+
 int trackerLength = 200;
 float startTime = 0.035;
 
@@ -7,9 +37,9 @@ class Tracker
 {
 public:
 	
-	const ofxBvhJoint *joint;
+	const ofxBvhJoint *joint = nullptr;
 	deque<ofVec3f> points;
-	float trackerLength;
+	float trackerLength = 0.0f;
 	
 	void setup(const ofxBvhJoint *o){
 		joint = o;
@@ -18,7 +48,7 @@ public:
 	void update() {
 		const ofVec3f &p = joint->getPosition();
 		
-		if (p.distance(points.front()) > 1)
+		if (points.empty() || p.distance(points.front()) > 1)
 			points.push_front(joint->getPosition());
 		
 		if (points.size() > trackerLength){
@@ -28,10 +58,8 @@ public:
 	
 	void draw()	{
 		if (points.empty()) return;
-		
-		for (int i = 0; i < points.size() - 1; i++){
-			float a = ofMap(i, 0, points.size() - 1, 1, 0);
-				
+
+		for (size_t i = 0; i + 1 < points.size(); ++i){
 			ofVec3f &p0 = points[i];
 			ofVec3f &p1 = points[i + 1];
 			
@@ -40,7 +68,7 @@ public:
 			if (dist < 40) {
 				ofSetLineWidth(ofMap(dist, 0, 30, 0, 14));
 				ofSetColor(dist*20, 127-dist*10, 255-dist*20);
-				ofLine(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
+				ofDrawLine(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
 			}
 		}		
 	}
@@ -54,7 +82,7 @@ public:
 	}
 };
 
-vector<Tracker*> trackers;
+vector<std::unique_ptr<Tracker>> trackers;
 
 //--------------------------------------------------------------
 void testApp::setup() {
@@ -63,30 +91,28 @@ void testApp::setup() {
 	
 	rotate = 0;
 	
-	// setup bvh
-	bvh[0].load("bvhfiles/kashiyuka.bvh");
-	bvh[1].load("bvhfiles/nocchi.bvh");
-	bvh[2].load("bvhfiles/aachan.bvh");
+	assetsReady = loadMotionFiles(bvh);
 	
-	for (int i = 0; i < 3; i++)	{
-		bvh[i].play();
+	audioReady = ofFile::doesFileExist("Perfume_globalsite_sound.wav")
+		&& track.load("Perfume_globalsite_sound.wav");
+	if (audioReady) {
+		track.setLoop(true);
+		track.play();
+	} else {
+		ofLogNotice("motion-visualization")
+			<< "Audio file not found; using a silent internal clock.";
 	}
 	
-	track.loadSound("Perfume_globalsite_sound.wav");
-	track.play();
-	track.setLoop(true);
-	
 	// setup tracker
-	for (int i = 0; i < 3; i++)
+	if (assetsReady)
 	{
-		ofxBvh &b = bvh[i];
-		
-		for (int n = 0; n < b.getNumJoints(); n++) {
-			const ofxBvhJoint *o = b.getJoint(n);
-			Tracker *t = new Tracker;
-			t->setup(o);
-			t->setTrackerLength(trackerLength);
-			trackers.push_back(t);
+		for (auto& motion : bvh) {
+			for (int n = 0; n < motion.getNumJoints(); ++n) {
+				auto tracker = std::make_unique<Tracker>();
+				tracker->setup(motion.getJoint(n));
+				tracker->setTrackerLength(trackerLength);
+				trackers.push_back(std::move(tracker));
+			}
 		}
 	}
 	
@@ -94,7 +120,7 @@ void testApp::setup() {
 	camera.setDistance(360);
 	camera.disableMouseInput();
 	
-	background.loadImage("background.png");
+	background.load("background.png");
 	
 }
 
@@ -103,18 +129,22 @@ void testApp::update()
 {
 	rotate += 0.04;
 	
-	float t = (track.getPosition() * 64.28);
-	t = t / bvh[0].getDuration();
+	if (!assetsReady) return;
+	const float motionDuration = bvh[0].getDuration();
+	const float motionSeconds = audioReady
+		? track.getPosition() * track.getDuration()
+		: std::fmod(ofGetElapsedTimef(), motionDuration);
+	const float t = ofClamp(motionSeconds / motionDuration, 0.0f, 1.0f);
 	
-	for (int i = 0; i < 3; i++)	{
-		bvh[i].setPosition(t);
-		bvh[i].update();
+	for (auto& motion : bvh) {
+		motion.setPosition(t);
+		motion.update();
 	}
 	
-	for (int i = 0; i < trackers.size(); i++) {
+	for (auto& tracker : trackers) {
 		if (t > startTime) {
-			trackers[i]->setTrackerLength(trackerLength);
-			trackers[i]->update();
+			tracker->setTrackerLength(trackerLength);
+			tracker->update();
 		}
 	}
 }
@@ -125,27 +155,34 @@ void testApp::draw(){
 	ofSetHexColor(0xffffff);
 	background.draw(0,0,ofGetWidth(),ofGetHeight());
 	
-	glEnable(GL_DEPTH_TEST);
+	ofEnableDepthTest();
 	
 	camera.begin();
 	ofPushMatrix();
 	{
 		ofTranslate(0, -80);
-		ofRotate(rotate, 0, 1, 0);
+		ofRotateDeg(rotate, 0, 1, 0);
 		ofScale(1, 1, 1);
 
 		// draw tracker
-		glDisable(GL_DEPTH_TEST);
+		ofDisableDepthTest();
 		ofEnableBlendMode(OF_BLENDMODE_ADD);
 		
 		//ofSetColor(ofColor::white, 80);
-		for (int i = 0; i < trackers.size(); i++){
-			trackers[i]->draw();
+		for (auto& tracker : trackers){
+			tracker->draw();
 		}
 
 	}
 	ofPopMatrix();
 	camera.end();
+	ofDisableDepthTest();
+	ofSetColor(255);
+
+	if (!assetsReady)
+		ofDrawBitmapString("Motion data is missing. See README.md.", 10, 20);
+	else if (!audioReady)
+		ofDrawBitmapString("Audio data is missing; running with a silent clock.", 10, 20);
 
 }
 

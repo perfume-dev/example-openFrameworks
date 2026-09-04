@@ -1,6 +1,35 @@
 #include "testApp.h"
 
-const float trackDuration = 64.28;
+#include <memory>
+
+namespace {
+
+const std::array<const char*, 3> kPerfumeMotionFiles = {
+	"bvhfiles/aachan.bvh",
+	"bvhfiles/kashiyuka.bvh",
+	"bvhfiles/nocchi.bvh"
+};
+
+const std::array<const char*, 3> kBundledMotionFiles = {
+	"../../../example-bvh/bin/data/A_test.bvh",
+	"../../../example-bvh/bin/data/B_test.bvh",
+	"../../../example-bvh/bin/data/C_test.bvh"
+};
+
+bool loadMotionFiles(std::array<ofxBvh, 3>& motions) {
+	bool loaded = true;
+	for (size_t i = 0; i < motions.size(); ++i) {
+		if (!motions[i].load(kPerfumeMotionFiles[i])) {
+			ofLogWarning("example-pen-graphics")
+				<< "Using bundled motion fallback for " << kPerfumeMotionFiles[i];
+			loaded = motions[i].load(kBundledMotionFiles[i]) && loaded;
+		}
+	}
+	return loaded;
+}
+
+} // namespace
+
 ofVec3f center, center_t;
 ofVec3f campos, campos_t;
 ofVec3f offset, offset_v;
@@ -9,7 +38,7 @@ class Tracker
 {
 public:
 	
-	ofxBvh *bvh;
+	ofxBvh *bvh = nullptr;
 	
 	typedef vector<ofVec3f> Frame;
 	deque<Frame> track;
@@ -34,39 +63,39 @@ public:
 		{
 			// update vertexes flow
 			
-			for (int i = 0; i < track.size(); i++)
+			for (size_t i = 0; i < track.size(); ++i)
 			{
-				float delta = ofMap(i, 0, track.size(), 0, 1);
+				float delta = ofMap(static_cast<float>(i), 0.0f,
+					static_cast<float>(track.size()), 0.0f, 1.0f);
 				Frame &f = track[i];
 				
-				for (int n = 0; n < f.size(); n++)
+				for (auto& v : f)
 				{
-					ofVec3f &v = f[n];
-					ofVec3f f = 0;
+					ofVec3f force{};
 					
 					// gravity
-					f.y -= 2.5 * (1 - sin(pow(delta, 2) * PI));
-					f.y += ofNoise(v.y * 0.0001 + offset.y) * 1.4;
+					force.y -= 2.5 * (1 - sin(pow(delta, 2) * PI));
+					force.y += ofNoise(v.y * 0.0001 + offset.y) * 1.4;
 					
-					f.x += ofSignedNoise(v.x * 0.0001 + offset.x) * 3;
-					f.z += ofSignedNoise(v.z * 0.0001 + offset.z) * 3;
+					force.x += ofSignedNoise(v.x * 0.0001 + offset.x) * 3;
+					force.z += ofSignedNoise(v.z * 0.0001 + offset.z) * 3;
 					
 					if (v.y < 0)
 					{
-						f.y *= 0.02;
-						f.x *= 5;
-						f.y *= 5;
+						force.y *= 0.02;
+						force.x *= 5;
+						force.z *= 5;
 					}
 					
-					v += f;
+					v += force;
 				}
 			}
 			
 			Frame f;
-			for (int i = 0; i < bvh->getNumJoints(); i++)
+			for (int i = 0; i < bvh->getNumJoints(); ++i)
 			{
 				const ofxBvhJoint *j = bvh->getJoint(i);
-				for (int n = 0; n < j->getChildren().size(); n++)
+				for (size_t n = 0; n < j->getChildren().size(); ++n)
 				{
 					f.push_back(j->getPosition());
 					f.push_back(j->getChildren().at(n)->getPosition());
@@ -82,23 +111,24 @@ public:
 			// cache vertexes
 			
 			buffer.clear();
-			for (int n = 0; n < 52; n += 2)
+			for (size_t n = 0; n + 1 < track.front().size(); n += 2)
 			{
 				ofVec3f norm;
 				
 				BufferArray arr;
 				
-				for (int i = 0; i < track.size() - 1; i++)
+				for (size_t i = 0; i + 1 < track.size(); ++i)
 				{
-					float delta = ofMap(i, 0, track.size(), 0.1, 1);
+					float delta = ofMap(static_cast<float>(i), 0.0f,
+						static_cast<float>(track.size()), 0.1f, 1.0f);
 					Frame &f1 = track[i];
 					
 					const ofVec3f &v1 = f1[n];
 					const ofVec3f &v2 = f1[n + 1];
 					const ofVec3f d = v1 - v2;
 					
-					const ofVec3f c1 = d.crossed(ofVec3f(0, 1, 0)).normalized();
-					const ofVec3f c = c1.crossed(d).normalized();
+					const ofVec3f c1 = d.getCrossed(ofVec3f(0, 1, 0)).getNormalized();
+					const ofVec3f c = c1.getCrossed(d).getNormalized();
 					// if (c.y < 0) c *= -1;
 					
 					if (i == 0) norm.set(c);
@@ -130,14 +160,13 @@ public:
 		
 		ofSetColor(255);
 		
-		for (int i = 0; i < buffer.size(); i++)
+		for (size_t i = 0; i < buffer.size(); ++i)
 		{
 			const BufferArray &arr = buffer[i];
 			
 			glBegin(GL_TRIANGLE_STRIP);
-			for (int n = 0; n < arr.size(); n++)
+			for (const auto& b : arr)
 			{
-				const Buffer &b = arr[n];
 				glNormal3fv(b.norm.getPtr());
 				glVertex3fv(b.v1.getPtr());
 				glVertex3fv(b.v2.getPtr());
@@ -149,28 +178,26 @@ public:
 		
 		ofSetColor(0);
 		
-		for (int i = 0; i < buffer.size(); i++)
+		for (size_t i = 0; i < buffer.size(); ++i)
 		{
 			const BufferArray &arr = buffer[i];
 			
 			glBegin(GL_LINE_STRIP);
-			for (int n = 0; n < arr.size(); n++)
+			for (const auto& b : arr)
 			{
-				const Buffer &b = arr[n];
 				glNormal3fv(b.norm.getPtr());
 				glVertex3fv(b.v1.getPtr());
 			}
 			glEnd();
 		}
 		
-		for (int i = 0; i < buffer.size(); i++)
+		for (size_t i = 0; i < buffer.size(); ++i)
 		{
 			const BufferArray &arr = buffer[i];
 			
 			glBegin(GL_LINE_STRIP);
-			for (int n = 0; n < arr.size(); n++)
+			for (const auto& b : arr)
 			{
-				const Buffer &b = arr[n];
 				glNormal3fv(b.norm.getPtr());
 				glVertex3fv(b.v2.getPtr());
 			}
@@ -182,7 +209,7 @@ public:
 			Frame &f = track[0];
 			
 			glBegin(GL_LINES);
-			for (int n = 0; n < f.size(); n += 2)
+			for (size_t n = 0; n + 1 < f.size(); n += 2)
 			{
 				ofVec3f &v1 = f[n];
 				ofVec3f &v2 = f[n + 1];
@@ -199,7 +226,7 @@ public:
 	
 };
 
-vector<Tracker*> trackers;
+vector<std::unique_ptr<Tracker>> trackers;
 
 //--------------------------------------------------------------
 void testApp::setup()
@@ -212,32 +239,32 @@ void testApp::setup()
 
 	ofBackground(255);
 	
-	bvh.resize(3);
+	assetsReady = loadMotionFiles(bvh);
 	
-	// You have to get motion and sound data from http://www.perfume-global.com
-	
-	// setup bvh
-	bvh[0].load("bvhfiles/aachan.bvh");
-	bvh[1].load("bvhfiles/kashiyuka.bvh");
-	bvh[2].load("bvhfiles/nocchi.bvh");
-	
-	for (int i = 0; i < bvh.size(); i++)
+	for (auto& motion : bvh)
 	{
-		bvh[i].setFrame(4);
+		motion.setFrame(4);
 	}
 	
-	track.loadSound("Perfume_globalsite_sound.wav");
-	track.setLoop(true);
-	track.play();
+	audioReady = ofFile::doesFileExist("Perfume_globalsite_sound.wav")
+		&& track.load("Perfume_globalsite_sound.wav");
+	if (audioReady) {
+		track.setLoop(true);
+		track.play();
+	} else {
+		ofLogNotice("example-pen-graphics")
+			<< "Audio file not found; using a silent internal clock.";
+	}
 	
 	// setup tracker
-	for (int i = 0; i < bvh.size(); i++)
+	if (assetsReady)
 	{
-		ofxBvh &b = bvh[i];
-
-		Tracker *t = new Tracker;
-		t->setup(&b);
-		trackers.push_back(t);
+		for (auto& motion : bvh)
+		{
+			auto tracker = std::make_unique<Tracker>();
+			tracker->setup(&motion);
+			trackers.push_back(std::move(tracker));
+		}
 	}
 	
 	offset.x = ofRandom(1);
@@ -253,25 +280,29 @@ void testApp::setup()
 //--------------------------------------------------------------
 void testApp::update()
 {
-	float t = (track.getPosition() * trackDuration);
-	t = t / bvh[0].getDuration();
+	if (!assetsReady) return;
+	const float motionDuration = bvh[0].getDuration();
+	const float motionSeconds = audioReady
+		? track.getPosition() * track.getDuration()
+		: std::fmod(ofGetElapsedTimef(), motionDuration);
+	const float t = ofClamp(motionSeconds / motionDuration, 0.0f, 1.0f);
 	
 	center_t.set(0, 0, 0);
 	
-	for (int i = 0; i < bvh.size(); i++)
+	for (auto& motion : bvh)
 	{
-		bvh[i].setPosition(t);
-		bvh[i].update();
+		motion.setPosition(t);
+		motion.update();
 		
-		center_t += bvh[i].getJoint(0)->getPosition();
+		center_t += motion.getJoint(0)->getPosition();
 	}
 	
 	center_t /= 3;
 	center += (center_t - center) * 0.01;
 	
-	for (int i = 0; i < trackers.size(); i++)
+	for (auto& tracker : trackers)
 	{
-		trackers[i]->update();
+		tracker->update();
 	}
 	
 	offset += offset_v;
@@ -312,16 +343,16 @@ void testApp::draw(){
 			{
 				ofPushMatrix();
 				glTranslatef(x * 500, 0, y * 500);
-				ofLine(10, 0, 0, -10, 0, 0);
-				ofLine(0, 0, 10, 0, 0, -10);
+				ofDrawLine(10, 0, 0, -10, 0, 0);
+				ofDrawLine(0, 0, 10, 0, 0, -10);
 				ofPopMatrix();
 			}
 		}
 		
 		ofSetColor(ofColor::white, 80);
-		for (int i = 0; i < trackers.size(); i++)
+		for (auto& tracker : trackers)
 		{
-			trackers[i]->draw();
+			tracker->draw();
 		}
 	}
 	ofPopMatrix();
@@ -329,6 +360,13 @@ void testApp::draw(){
 	cam.end();
 	
 	light.disable();
+	ofDisableDepthTest();
+	ofSetColor(20);
+
+	if (!assetsReady)
+		ofDrawBitmapString("Motion data is missing. See README.md.", 10, 20);
+	else if (!audioReady)
+		ofDrawBitmapString("Audio data is missing; running with a silent clock.", 10, 20);
 	
 }
 

@@ -16,7 +16,10 @@ public:
 		X_POSITION, Y_POSITION, Z_POSITION
 	};
 	
-	ofxBvhJoint(string name, ofxBvhJoint *parent) : name(name),  parent(parent) {}
+	ofxBvhJoint(const string& name, ofxBvhJoint *parent)
+		: name(name)
+		, bvh(nullptr)
+		, parent(parent) {}
 	
 	inline const string& getName() const { return name; }
 	inline const ofVec3f& getOffset() const { return offset; }
@@ -56,39 +59,53 @@ class ofxBvh
 {
 public:
 	
-	ofxBvh() : root(NULL), total_channels(0), rate(1), loop(false),
-		playing(false), play_head(0), need_update(false) {}
+	ofxBvh()
+		: total_channels(0)
+		, root(nullptr)
+		, num_frames(0)
+		, frame_time(0.0f)
+		, rate(1.0f)
+		, playing(false)
+		, play_head(0.0f)
+		, loop(false)
+		, need_update(false)
+		, frame_new(false) {}
 	
 	virtual ~ofxBvh();
+	ofxBvh(const ofxBvh&) = delete;
+	ofxBvh& operator=(const ofxBvh&) = delete;
 	
-	void load(string path);
+	bool load(const of::filesystem::path& path);
 	void unload();
 
 	void update();
+	void update(float deltaSeconds);
 	void draw();
 	
-	bool isFrameNew();
+	bool isFrameNew() const;
+	bool isLoaded() const;
 	
 	void play();
 	void stop();
-	bool isPlaying();
+	bool isPlaying() const;
 	
 	void setLoop(bool yn);
-	bool isLoop();
+	bool isLoop() const;
 	
 	void setRate(float rate);
 
 	void setFrame(int index);
-	int getFrame();
+	int getFrame() const;
 	
 	void setPosition(float pos);
-	float getPosition();
+	float getPosition() const;
 	
-	float getDuration();
+	float getDuration() const;
 	
-	const int getNumJoints() const { return joints.size(); }
-	const ofxBvhJoint* getJoint(int index);
-	const ofxBvhJoint* getJoint(string name);
+	int getNumFrames() const { return static_cast<int>(frames.size()); }
+	int getNumJoints() const { return static_cast<int>(joints.size()); }
+	const ofxBvhJoint* getJoint(int index) const;
+	const ofxBvhJoint* getJoint(const string& name) const;
 	
 protected:
 	
@@ -115,10 +132,10 @@ protected:
 	bool need_update;
 	bool frame_new;
 	
-	void parseHierarchy(const string& data);
-	ofxBvhJoint* parseJoint(int& index, vector<string> &tokens, ofxBvhJoint *parent);
-	void updateJoint(int& index, const FrameData& frame_data, ofxBvhJoint *joint);
+	bool parseHierarchy(const string& data);
+	ofxBvhJoint* parseJoint(size_t& index, const vector<string>& tokens, ofxBvhJoint *parent);
+	bool updateJoint(size_t& index, const FrameData& frame_data, ofxBvhJoint *joint);
 	
-	void parseMotion(const string& data);
+	bool parseMotion(const string& data);
 	
 };

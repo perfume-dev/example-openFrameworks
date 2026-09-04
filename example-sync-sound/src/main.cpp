@@ -1,16 +1,14 @@
 #include "ofMain.h"
 #include "testApp.h"
-#include "ofAppGlutWindow.h"
 
 //========================================================================
-int main( ){
+int main() {
+	ofGLWindowSettings settings;
+	settings.setSize(1024, 768);
+	settings.setGLVersion(2, 1);
+	settings.windowMode = OF_WINDOW;
 
-    ofAppGlutWindow window;
-	ofSetupOpenGL(&window, 1024,768, OF_WINDOW);			// <-------- setup the GL context
-
-	// this kicks off the running of my app
-	// can be OF_WINDOW or OF_FULLSCREEN
-	// pass in width and height too:
-	ofRunApp( new testApp());
-
+	auto window = ofCreateWindow(settings);
+	ofRunApp(window, std::make_shared<testApp>());
+	ofRunMainLoop();
 }

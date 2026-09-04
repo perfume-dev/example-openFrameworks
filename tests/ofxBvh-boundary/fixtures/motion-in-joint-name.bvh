@@ -1,0 +1,10 @@
+HIERARCHY
+ROOT MOTION_CAPTURE
+{
+	OFFSET 0 0 0
+	CHANNELS 1 Xposition
+}
+MOTION
+Frames: 1
+Frame Time: 0.0333333
+0

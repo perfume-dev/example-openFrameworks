@@ -96,10 +96,14 @@ To render every example in a hidden test window and save PNG evidence:
 ./scripts/smoke-all.sh /path/to/captures
 ```
 
-The GitHub workflow performs the same render checks after building. Its
-`openframeworks-rendering` artifact contains screenshots and logs. This requires
-a desktop OpenGL context, even though the test windows stay hidden. The shader
-studies are captured at two motion timestamps to check that their output changes.
+The GitHub workflow builds and runs regression tests on macOS, then independently
+builds and renders all eight examples on Ubuntu 22.04 with Mesa llvmpipe and Xvfb.
+This supplies a real software OpenGL context where hosted macOS runners cannot
+provide the required pixel format. The `openframeworks-rendering` artifact contains
+screenshots, application logs and the OpenGL context report. Render failures fail
+CI; the shader studies are captured at two motion timestamps to check that their
+output changes. Local capture also requires a desktop OpenGL context, even though
+the test windows stay hidden. The build/capture scripts support macOS and Linux.
 
 The checked-in Xcode projects were regenerated from the openFrameworks 0.12.1
 macOS template. They use relative paths and expect the repository layout shown

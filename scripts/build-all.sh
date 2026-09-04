@@ -36,6 +36,11 @@ echo "==> Building regression test suite"
 make -C "$repo_root/tests/ofxBvh-boundary" Release OF_ROOT="$of_root" -j"$jobs"
 
 echo "==> Running regression test suite"
-"$repo_root/tests/ofxBvh-boundary/bin/ofxBvh-boundary.app/Contents/MacOS/ofxBvh-boundary" \
+case "$(uname -s)" in
+	Darwin) test_binary="$repo_root/tests/ofxBvh-boundary/bin/ofxBvh-boundary.app/Contents/MacOS/ofxBvh-boundary" ;;
+	Linux) test_binary="$repo_root/tests/ofxBvh-boundary/bin/ofxBvh-boundary" ;;
+	*) echo "Unsupported platform: $(uname -s)" >&2; exit 2 ;;
+esac
+"$test_binary" \
 	"$repo_root/example-bvh/bin/data" \
 	"$repo_root/tests/ofxBvh-boundary/fixtures"

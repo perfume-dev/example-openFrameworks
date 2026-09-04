@@ -27,13 +27,21 @@ render_app() {
 	local artifact="$2"
 	shift 2
 	local binary app_pid watchdog_pid result
-	binary="$repo_root/$app/bin/$app.app/Contents/MacOS/$app"
+	case "$(uname -s)" in
+		Darwin) binary="$repo_root/$app/bin/$app.app/Contents/MacOS/$app" ;;
+		Linux) binary="$repo_root/$app/bin/$app" ;;
+		*) echo "Unsupported platform: $(uname -s)" >&2; exit 2 ;;
+	esac
 	if [[ ! -x "$binary" ]]; then
 		echo "Build $app first with scripts/build-all.sh." >&2
 		exit 1
 	fi
 	echo "Rendering $app"
-	"$binary" --smoke-test "--capture=$capture_dir/$artifact.png" "$@" >"$capture_dir/$artifact.log" 2>&1 &
+	# Linux resolves data relative to the working directory; use the same bin layout on both platforms.
+	(
+		cd "$repo_root/$app/bin"
+		exec "$binary" --smoke-test "--capture=$capture_dir/$artifact.png" "$@"
+	) >"$capture_dir/$artifact.log" 2>&1 &
 	app_pid=$!
 	# Bound an unresponsive renderer without terminating unrelated processes.
 	(

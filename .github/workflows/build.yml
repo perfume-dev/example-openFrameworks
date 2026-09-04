@@ -49,8 +49,59 @@ jobs:
       - name: Build all applications and run regression tests
         run: ./scripts/build-all.sh "${RUNNER_TEMP}/of_v0.12.1_osx_release"
 
-      - name: Render all examples with OpenGL 3.2
-        run: ./scripts/smoke-all.sh "${RUNNER_TEMP}/example-captures"
+
+  linux-render:
+    name: Linux Mesa rendering
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    env:
+      OF_URL: https://github.com/openframeworks/openFrameworks/releases/download/0.12.1/of_v0.12.1_linux64_gcc6_release.tar.gz
+      OF_SHA256: d6c1dcab777665b2aa63e5e3d9122cc116f096b3421db3493f795a621b399c63
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      GALLIUM_DRIVER: llvmpipe
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Cache openFrameworks 0.12.1
+        id: cache-openframeworks
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/of_v0.12.1_linux64_gcc6_release
+          key: openframeworks-0.12.1-ubuntu-22.04-${{ runner.arch }}-d6c1dcab7776-v1
+
+      - name: Download verified openFrameworks release
+        if: steps.cache-openframeworks.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          OF_ARCHIVE="${RUNNER_TEMP}/of_v0.12.1_linux64_gcc6_release.tar.gz"
+          curl --fail --location --retry 3 --output "$OF_ARCHIVE" "$OF_URL"
+          echo "$OF_SHA256  $OF_ARCHIVE" | sha256sum --check
+          tar --extract --gzip --file "$OF_ARCHIVE" --directory "${RUNNER_TEMP}"
+
+      - name: Install official Ubuntu dependencies and software OpenGL
+        shell: bash
+        run: |
+          # This installer comes from the checksum-pinned release and supports Ubuntu 22.04.
+          sudo env DEBIAN_FRONTEND=noninteractive bash \
+            "${RUNNER_TEMP}/of_v0.12.1_linux64_gcc6_release/scripts/linux/ubuntu/install_dependencies.sh" -y
+          sudo apt-get install --yes --no-install-recommends xvfb xauth mesa-utils libgl1-mesa-dri
+
+      - name: Build all applications and run regression tests
+        run: ./scripts/build-all.sh "${RUNNER_TEMP}/of_v0.12.1_linux64_gcc6_release"
+
+      - name: Render all examples with Mesa OpenGL
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/example-captures"
+          xvfb-run --auto-servernum --server-args="-screen 0 1600x1000x24 +extension GLX -nolisten tcp" \
+            bash -euo pipefail -c '
+              glxinfo -B | tee "${RUNNER_TEMP}/example-captures/opengl-context.log"
+              grep -qi llvmpipe "${RUNNER_TEMP}/example-captures/opengl-context.log"
+              ./scripts/smoke-all.sh "${RUNNER_TEMP}/example-captures"
+            '
 
       - name: Keep rendering evidence
         if: always()
@@ -58,4 +109,5 @@ jobs:
         with:
           name: openframeworks-rendering
           path: ${{ runner.temp }}/example-captures
+          if-no-files-found: error
           retention-days: 7

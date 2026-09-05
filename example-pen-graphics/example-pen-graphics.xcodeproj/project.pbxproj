@@ -57,14 +57,14 @@
 			"fileEncoding": "4",
 			"isa": "PBXFileReference",
 			"lastKnownFileType": "sourcecode.cpp.cpp",
-			"name": "testApp.cpp",
+			"name": "ofApp.cpp",
 			"sourceTree": "<group>"
 		},
 		"68E49E5E-0536-4955-B144-FA5AC4F1BE03": {
 			"fileEncoding": "4",
 			"isa": "PBXFileReference",
 			"lastKnownFileType": "sourcecode.cpp.h",
-			"name": "testApp.h",
+			"name": "ofApp.h",
 			"sourceTree": "<group>"
 		},
 		"AD7E4701-E012-467E-B335-FEF0977E4F7B": {

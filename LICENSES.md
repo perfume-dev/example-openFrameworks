@@ -14,6 +14,9 @@ single combined work.
 | `motion-visualization` | [MIT](motion-visualization/LICENSE) | Copyright (c) 2012 Atsushi Tadokoro |
 | `marching-cubes` | [MIT](marching-cubes/LICENSE) | Copyright (c) 2012 Atsushi Tadokoro |
 | `ofxBvh` | [MIT](ofxBvh/LICENSE) | Copyright (c) 2012 Daito Manabe; originally published under the Perfume Dev Team name |
+| `example-motion-ribbons` | [MIT](example-motion-ribbons/LICENSE) | Copyright (c) 2026 Daito Manabe |
+| `example-motion-field` | [MIT](example-motion-field/LICENSE) | Copyright (c) 2026 Daito Manabe |
+| `shared` | [MIT](shared/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `scripts` | [MIT](scripts/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `tests/ofxBvh-boundary` | [MIT](tests/ofxBvh-boundary/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `third_party/ofxMarchingCubes` | [LGPL-2.1-or-later](third_party/ofxMarchingCubes/LICENSE.txt) | Copyright (c) 2009 Rui Madeira; adapted by Greg Borenstein |

@@ -74,7 +74,7 @@ jobs:
         run: |
           apt-get update
           apt-get install --yes --no-install-recommends \
-            ca-certificates curl git sudo zstd lsb-release pkg-config
+            ca-certificates curl git sudo zstd lsb-release pkg-config python3
           mkdir -p "${RUNNER_TEMP}/example-captures"
           apt-cache policy libunwind-dev libunwind8 libgstreamer1.0-dev \
             | tee "${RUNNER_TEMP}/example-captures/dependency-policy.log"
@@ -130,3 +130,26 @@ jobs:
           path: ${{ runner.temp }}/example-captures
           if-no-files-found: error
           retention-days: 7
+
+  retarget-contracts:
+    name: Retarget input and path contracts (no motion solve)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Isolated Python 3.12 test environment
+        run: |
+          python3.12 -m venv "${RUNNER_TEMP}/g1-contract-tests"
+          "${RUNNER_TEMP}/g1-contract-tests/bin/python" -m pip install \
+            -r tools/g1-retarget/requirements.txt
+          "${RUNNER_TEMP}/g1-contract-tests/bin/python" -m pip check
+      - name: Source parser, velocity paths, and guarded export tests
+        run: |
+          "${RUNNER_TEMP}/g1-contract-tests/bin/python" -m unittest discover \
+            -s tools/g1-retarget/preflight -p 'test_*.py' -v
+          "${RUNNER_TEMP}/g1-contract-tests/bin/python" -m unittest discover \
+            -s tools/g1-retarget/retarget -p 'test_*.py' -v

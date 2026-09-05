@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-09-05",
+  "status": "validated source-specific kinematic workflow; full A/B/C independent pose export passed; not a controller",
+  "pending_refresh": [],
+  "copy_policy": "Python module bytes preserved; no model, weights, probes, caches or runtime artifacts included",
+  "validation_boundary": {
+    "source_dance_frames_per_clip": 1299,
+    "source_fps": 40,
+    "source_frame_zero_excluded": true,
+    "pose_gates_unchanged": true,
+    "physical_tracking_validated": false
+  },
+  "files_sha256": {
+    "preflight/bvh_audit.py": "d6c104f8854b21c421f3133b378417d78ccd07f56822e14cfd55b5e4e53901b1",
+    "preflight/test_bvh_audit.py": "d4008424aad3712ab7e3fe2f3addc504f9bdfee1af0c957c7b98c28eb183a018",
+    "retarget/export_viewer.py": "13bff49ba44fb5bfe277d7ab807a6c65719d5ccaafbcb7867d20a6ae64b8423a",
+    "retarget/fetch_model.py": "166011abaccaf60a48f5f211af88a266bb6380ec90a4cbdb92752d6b56b301bc",
+    "retarget/global_path.py": "09e93346f06d930e61f433fcb9a938f84416184b4088628e5b6d8f69cbbb39ac",
+    "retarget/retarget.py": "8221a897aee914657dc017a1c1be3a42675e797c61273770f2f558d61d764b8e",
+    "retarget/test_export_viewer.py": "f7ee1e937827e1fb770973fe652c58f18acaa763b559fef2a122d6616cc6b253",
+    "retarget/test_global_path.py": "b51db5163eb375f1f1772fe4822838b4855f394797985bacd290eae1f0ec0e34"
+  }
+}

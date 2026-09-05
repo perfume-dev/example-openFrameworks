@@ -1,0 +1,9 @@
+# Core dependency versions tested with Python 3.12 on Linux.
+# This is not a complete transitive dependency lock or a GPU policy environment.
+mujoco==3.10.0
+mink==1.3.0
+numpy==2.5.2
+scipy==1.18.1
+daqp==0.9.1
+# Mink uses this solver interface; pin it even though this kit does not import it directly.
+qpsolvers==4.13.0

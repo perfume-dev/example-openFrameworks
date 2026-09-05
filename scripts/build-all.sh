@@ -25,6 +25,7 @@ apps=(
 	"marching-cubes"
 	"example-motion-ribbons"
 	"example-motion-field"
+	"example-g1-motion-lab"
 )
 
 for app in "${apps[@]}"; do

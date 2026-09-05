@@ -1,0 +1,303 @@
+{
+  "status": "pass",
+  "physical_tracking_validated": false,
+  "clips": {
+    "A": {
+      "status": "pass",
+      "thresholds": {
+        "mean_limb_direction_degrees": 18.0,
+        "p95_limb_direction_degrees": 40.0,
+        "max_joint_limit_violation_rad": 1e-05,
+        "max_joint_velocity_limit_ratio": 1.00001,
+        "max_foot_penetration_m": 0.025,
+        "max_target_position_error_m": 0.18
+      },
+      "metrics": {
+        "mean_limb_direction_degrees": 3.8608396981714743,
+        "p95_limb_direction_degrees": 11.77383509795545,
+        "max_joint_limit_violation_rad": 0.0,
+        "max_joint_velocity_limit_ratio": 1.00000000000002,
+        "max_foot_penetration_m": 0.0028788745359853594,
+        "max_target_position_error_m": 0.13882192285845904
+      },
+      "failed_gates": [],
+      "frames": 1299,
+      "fps": 40.0,
+      "source_frame_range_inclusive": [
+        1,
+        1299
+      ],
+      "source_time_offset_s": 0.025,
+      "last_source_time_s": 32.475,
+      "playback_sample_span_s": 32.45,
+      "source_sha256": "bb53e8e80491830b5ad1ae2a649d44aa7c65e683161d3b456c9279a533ec563e",
+      "reference_sha256": "6960514dc61ad1f5a574238bdd297552498fe903d70edb0d66f7bd29a6d8cafd",
+      "per_chain_p95_degrees": {
+        "LeftHip->LeftKnee": 8.434000171070107,
+        "LeftKnee->LeftAnkle": 10.112574217953412,
+        "LeftShoulder->LeftElbow": 14.308559220335098,
+        "LeftElbow->LeftWrist": 4.391623107044293,
+        "RightHip->RightKnee": 13.30813032815736,
+        "RightKnee->RightAnkle": 14.847660643440706,
+        "RightShoulder->RightElbow": 17.70728174894571,
+        "RightElbow->RightWrist": 11.102852484284675
+      },
+      "per_target_max_position_error_m": {
+        "pelvis": 0.1055457120337019,
+        "torso_link": 0.1053458462859209,
+        "left_knee_link": 0.08291840491540162,
+        "left_ankle_roll_link": 0.03144999429261652,
+        "left_elbow_link": 0.07533187022006957,
+        "left_wrist_yaw_link": 0.10602206414395497,
+        "right_knee_link": 0.10024815962904617,
+        "right_ankle_roll_link": 0.043769985049685524,
+        "right_elbow_link": 0.11148359211868022,
+        "right_wrist_yaw_link": 0.13882192285845904
+      },
+      "calibration": {
+        "source_unit_assumption": "centimeters",
+        "source_axes_assumption": "Y up, X anatomical left, Z forward",
+        "basis": [
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ]
+        ],
+        "robot_locomotion_scale": 0.8832589184197422,
+        "constant_floor_shift_m": -0.041551623034813544,
+        "pelvis_origin_correction_local_m": [
+          -2.7734330038379905e-05,
+          0.0,
+          0.10242818590044553
+        ],
+        "foot_target_floor_projection": {
+          "left": {
+            "max_m": 0.0122012939265933,
+            "mean_m": 0.0006093990489729862
+          },
+          "right": {
+            "max_m": 0.009315433487175947,
+            "mean_m": 0.0001538219277145581
+          }
+        },
+        "frame0_use": "inspection/calibration only, excluded from dance trajectory",
+        "source_start_frame": 1
+      },
+      "physical_tracking_validated": false,
+      "limitations": [
+        "Pose gates are engineering reference criteria, not hardware safety",
+        "Human motion is adapted to robot morphology, not exactly reproduced",
+        "Self-collision, dynamic balance and finite-force tracking are not approved"
+      ]
+    },
+    "B": {
+      "status": "pass",
+      "thresholds": {
+        "mean_limb_direction_degrees": 18.0,
+        "p95_limb_direction_degrees": 40.0,
+        "max_joint_limit_violation_rad": 1e-05,
+        "max_joint_velocity_limit_ratio": 1.00001,
+        "max_foot_penetration_m": 0.025,
+        "max_target_position_error_m": 0.18
+      },
+      "metrics": {
+        "mean_limb_direction_degrees": 2.439792899925127,
+        "p95_limb_direction_degrees": 6.149141467373317,
+        "max_joint_limit_violation_rad": 0.0,
+        "max_joint_velocity_limit_ratio": 0.9621446854764663,
+        "max_foot_penetration_m": 0.0,
+        "max_target_position_error_m": 0.07848920523484577
+      },
+      "failed_gates": [],
+      "frames": 1299,
+      "fps": 40.0,
+      "source_frame_range_inclusive": [
+        1,
+        1299
+      ],
+      "source_time_offset_s": 0.025,
+      "last_source_time_s": 32.475,
+      "playback_sample_span_s": 32.45,
+      "source_sha256": "74811741939eaf3ff7e41336ed1bacc5f287879d58dc61d1d738d1c69df7725c",
+      "reference_sha256": "66619fb7bde0ed91a79f6aebb28e432cee496a58436f6d177258a9a4465eb798",
+      "per_chain_p95_degrees": {
+        "LeftHip->LeftKnee": 10.55998330231945,
+        "LeftKnee->LeftAnkle": 11.23196526163168,
+        "LeftShoulder->LeftElbow": 1.7201115469773613,
+        "LeftElbow->LeftWrist": 0.973743946490965,
+        "RightHip->RightKnee": 5.757643372533172,
+        "RightKnee->RightAnkle": 5.968209237162095,
+        "RightShoulder->RightElbow": 2.146323580174743,
+        "RightElbow->RightWrist": 1.286914798047482
+      },
+      "per_target_max_position_error_m": {
+        "pelvis": 0.02224609450459021,
+        "torso_link": 0.022248021146349103,
+        "left_knee_link": 0.07848920523484577,
+        "left_ankle_roll_link": 0.007497602076935155,
+        "left_elbow_link": 0.019574443551479272,
+        "left_wrist_yaw_link": 0.018953525450538043,
+        "right_knee_link": 0.059502986828792626,
+        "right_ankle_roll_link": 0.00820878705638855,
+        "right_elbow_link": 0.01833812829859891,
+        "right_wrist_yaw_link": 0.027760047483217237
+      },
+      "calibration": {
+        "source_unit_assumption": "centimeters",
+        "source_axes_assumption": "Y up, X anatomical left, Z forward",
+        "basis": [
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ]
+        ],
+        "robot_locomotion_scale": 0.8832589184197422,
+        "constant_floor_shift_m": -0.04603850069866688,
+        "pelvis_origin_correction_local_m": [
+          -2.7734330038379905e-05,
+          0.0,
+          0.10242818590044553
+        ],
+        "foot_target_floor_projection": {
+          "left": {
+            "max_m": 0.01180348494380001,
+            "mean_m": 0.000573030281857345
+          },
+          "right": {
+            "max_m": 0.023478291159695696,
+            "mean_m": 0.0001852756073338434
+          }
+        },
+        "frame0_use": "inspection/calibration only, excluded from dance trajectory",
+        "source_start_frame": 1
+      },
+      "physical_tracking_validated": false,
+      "limitations": [
+        "Pose gates are engineering reference criteria, not hardware safety",
+        "Human motion is adapted to robot morphology, not exactly reproduced",
+        "Self-collision, dynamic balance and finite-force tracking are not approved"
+      ]
+    },
+    "C": {
+      "status": "pass",
+      "thresholds": {
+        "mean_limb_direction_degrees": 18.0,
+        "p95_limb_direction_degrees": 40.0,
+        "max_joint_limit_violation_rad": 1e-05,
+        "max_joint_velocity_limit_ratio": 1.00001,
+        "max_foot_penetration_m": 0.025,
+        "max_target_position_error_m": 0.18
+      },
+      "metrics": {
+        "mean_limb_direction_degrees": 2.593238342797434,
+        "p95_limb_direction_degrees": 5.961956669385397,
+        "max_joint_limit_violation_rad": 0.0,
+        "max_joint_velocity_limit_ratio": 0.5503473854490328,
+        "max_foot_penetration_m": 0.0,
+        "max_target_position_error_m": 0.061767227064046394
+      },
+      "failed_gates": [],
+      "frames": 1299,
+      "fps": 40.0,
+      "source_frame_range_inclusive": [
+        1,
+        1299
+      ],
+      "source_time_offset_s": 0.025,
+      "last_source_time_s": 32.475,
+      "playback_sample_span_s": 32.45,
+      "source_sha256": "7d99f23d74a241a7ce2cb3c12004b6b9951866c7e65fa0d1150ee6e39435b469",
+      "reference_sha256": "5c91fffdf58d3ed11f65ffd27c26ba3e0e60b7f7afe1a147690845c000e4d2ce",
+      "per_chain_p95_degrees": {
+        "LeftHip->LeftKnee": 6.358345081502928,
+        "LeftKnee->LeftAnkle": 6.646275020599065,
+        "LeftShoulder->LeftElbow": 1.938637055491534,
+        "LeftElbow->LeftWrist": 0.8958382154368809,
+        "RightHip->RightKnee": 5.728292189758855,
+        "RightKnee->RightAnkle": 6.10918771087214,
+        "RightShoulder->RightElbow": 2.0234101796680037,
+        "RightElbow->RightWrist": 0.8692630946293611
+      },
+      "per_target_max_position_error_m": {
+        "pelvis": 0.023980190548724804,
+        "torso_link": 0.023899421871170102,
+        "left_knee_link": 0.061767227064046394,
+        "left_ankle_roll_link": 0.010237907043874629,
+        "left_elbow_link": 0.011587360057908249,
+        "left_wrist_yaw_link": 0.005807099031216137,
+        "right_knee_link": 0.04468998963625546,
+        "right_ankle_roll_link": 0.01333804569768842,
+        "right_elbow_link": 0.01155635961759888,
+        "right_wrist_yaw_link": 0.006369961417693912
+      },
+      "calibration": {
+        "source_unit_assumption": "centimeters",
+        "source_axes_assumption": "Y up, X anatomical left, Z forward",
+        "basis": [
+          [
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ]
+        ],
+        "robot_locomotion_scale": 0.8832589184197422,
+        "constant_floor_shift_m": -0.048372278455793886,
+        "pelvis_origin_correction_local_m": [
+          -2.7734330038379905e-05,
+          0.0,
+          0.10242818590044553
+        ],
+        "foot_target_floor_projection": {
+          "left": {
+            "max_m": 0.026583971705070483,
+            "mean_m": 0.0004995127862540295
+          },
+          "right": {
+            "max_m": 0.028898905452062886,
+            "mean_m": 0.0005150833070194092
+          }
+        },
+        "frame0_use": "inspection/calibration only, excluded from dance trajectory",
+        "source_start_frame": 1
+      },
+      "physical_tracking_validated": false,
+      "limitations": [
+        "Pose gates are engineering reference criteria, not hardware safety",
+        "Human motion is adapted to robot morphology, not exactly reproduced",
+        "Self-collision, dynamic balance and finite-force tracking are not approved"
+      ]
+    }
+  }
+}

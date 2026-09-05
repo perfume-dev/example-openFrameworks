@@ -7,6 +7,8 @@ The six examples from the 2012 Perfume “Global Site Project” now use the
 programmable OpenGL 3.2 renderer, `ofApp`, member-owned state, and mesh-based
 drawing. Two new shader studies turn the bundled motion into luminous ribbons
 and animated contour fields.
+The [G1 Motion Lab](example-g1-motion-lab) adds a Unitree G1 kinematic-reference
+study, with an original-human-skeleton overlay and explicit validation status.
 
 ## Start with the shader studies
 
@@ -65,6 +67,7 @@ notices.
 | `marching-cubes` | A metaball surface driven by skeletal endpoints |
 | `example-motion-ribbons` | Geometry-shader ribbons following the bundled motion |
 | `example-motion-field` | A joint-driven fragment-shader contour field |
+| `example-g1-motion-lab` | G1 robot reference playback, rigid-link meshes and source skeleton comparison; no robot control |
 | `ofxBvh` | The bundled BVH loader and player used by every example |
 
 ## Build with openFrameworks 0.12.1
@@ -81,7 +84,7 @@ cd "$OF_ROOT/apps/myApps/example-openFrameworks"
 ./scripts/build-all.sh "$OF_ROOT"
 ```
 
-The script builds all eight applications in Release mode and runs the `ofxBvh`
+The script builds all nine applications in Release mode and runs the `ofxBvh`
 boundary/malformed-input and marching-cubes lifecycle regression tests. An
 individual application can be built with, for example:
 
@@ -97,7 +100,7 @@ To render every example in a hidden test window and save PNG evidence:
 ```
 
 The GitHub workflow builds and runs regression tests on macOS, then independently
-builds and renders all eight examples in a clean, digest-pinned Ubuntu 22.04
+builds and renders all nine examples in a clean, digest-pinned Ubuntu 22.04
 container with Mesa llvmpipe and Xvfb. The container isolates OF dependencies
 from the hosted runner's preinstalled compiler SDKs.
 This supplies a real software OpenGL context where hosted macOS runners cannot
@@ -150,3 +153,30 @@ The maintained example code uses GLM vectors and mesh drawing. `ofxBvh` retains
 its older public vector/matrix types so existing addon consumers continue to
 compile; its example rendering supports the programmable renderer. The vendored
 marching-cubes dependency retains its upstream public interface and attribution.
+
+## Robot reference study
+
+[G1 Motion Lab](example-g1-motion-lab/README.md) displays the same A/B/C recordings
+adapted to a pinned 29-DOF Unitree G1 model. Geometry comes from the robot asset,
+not a procedural humanoid. Computation is separate from the lightweight viewer;
+there is no CUDA, Python, learned policy, or robot SDK in the application.
+
+![Actual G1 Motion Lab capture; kinematic references, physics not validated](docs/images/g1-motion-lab.png)
+
+The separate [remote reproduction kit](tools/g1-retarget/README.md) records
+source/model hashes, explicit coordinate conventions, dependency versions and
+the independent full-frame export gate. It does not provision cloud resources
+or automatically install or publish generated motion.
+
+The source-motion transform and complete original-frame pose checks are separate
+from rendering checks. The warning **KINEMATIC REFERENCE — PHYSICS NOT VALIDATED**
+is always visible. A reference that looks right is not evidence of balance,
+self-collision clearance, feasible torque, or safe hardware operation. The
+first independent gravity/contact experiment did not pass its collision gate;
+this example does not send any actuator commands. Model geometry retains its
+Unitree BSD-3-Clause license; the new viewer's MIT license does not relicense the
+original or derived performance data.
+
+All three bundled references now pass complete 40 Hz pose checks. See the
+[measured results and physical limitations](example-g1-motion-lab/VALIDATION.md)
+for the exact scope; no hardware execution is approved.

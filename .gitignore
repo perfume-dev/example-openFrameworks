@@ -1,3 +1,6 @@
 **/obj/
 tests/**/bin/
 .DS_Store
+example-g1-motion-lab/bin/*.app/
+example-g1-motion-lab/bin/example-g1-motion-lab
+example-g1-motion-lab/captures/

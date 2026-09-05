@@ -16,8 +16,11 @@ single combined work.
 | `ofxBvh` | [MIT](ofxBvh/LICENSE) | Copyright (c) 2012 Daito Manabe; originally published under the Perfume Dev Team name |
 | `example-motion-ribbons` | [MIT](example-motion-ribbons/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `example-motion-field` | [MIT](example-motion-field/LICENSE) | Copyright (c) 2026 Daito Manabe |
+| `example-g1-motion-lab` source and shaders | [MIT](example-g1-motion-lab/LICENSE) | Copyright (c) 2026 Daito Manabe; excludes motion and model assets |
+| `example-g1-motion-lab/bin/data/g1-model.json` derived robot geometry | [BSD-3-Clause](example-g1-motion-lab/bin/data/MODEL-LICENSE) | Upstream Unitree Robotics notice retained; not licensed by the viewer's MIT grant |
 | `shared` | [MIT](shared/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `scripts` | [MIT](scripts/LICENSE) | Copyright (c) 2026 Daito Manabe |
+| `tools/g1-retarget` new source and documentation | [MIT](tools/g1-retarget/LICENSE) | Copyright (c) 2026 Daito Manabe; excludes model assets, dependencies and performance data |
 | `tests/ofxBvh-boundary` | [MIT](tests/ofxBvh-boundary/LICENSE) | Copyright (c) 2026 Daito Manabe |
 | `third_party/ofxMarchingCubes` | [LGPL-2.1-or-later](third_party/ofxMarchingCubes/LICENSE.txt) | Copyright (c) 2009 Rui Madeira; adapted by Greg Borenstein |
 

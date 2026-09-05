@@ -24,11 +24,21 @@ apps=(
 	"example-g1-motion-lab"
 )
 
+render_timeout_seconds() {
+	# Mesa took about 46 seconds for G1's 480-frame view; the 960-frame
+	# view exceeded the old 90-second limit. Keep a bounded allowance for it.
+	case "$1" in
+		example-g1-motion-lab) echo 240 ;;
+		*) echo 90 ;;
+	esac
+}
+
 render_app() {
 	local app="$1"
 	local artifact="$2"
 	shift 2
-	local binary app_pid watchdog_pid result
+	local binary app_pid watchdog_pid result render_timeout
+	render_timeout="$(render_timeout_seconds "$app")"
 	case "$(uname -s)" in
 		Darwin) binary="$repo_root/$app/bin/$app.app/Contents/MacOS/$app" ;;
 		Linux) binary="$repo_root/$app/bin/$app" ;;
@@ -38,7 +48,7 @@ render_app() {
 		echo "Build $app first with scripts/build-all.sh." >&2
 		exit 1
 	fi
-	echo "Rendering $app"
+	echo "Rendering $app (timeout ${render_timeout}s)"
 	# Linux resolves data relative to the working directory; use the same bin layout on both platforms.
 	(
 		cd "$repo_root/$app/bin"
@@ -47,7 +57,7 @@ render_app() {
 	app_pid=$!
 	# Bound an unresponsive renderer without terminating unrelated processes.
 	(
-		sleep 90
+		sleep "$render_timeout"
 		kill -TERM "$app_pid" 2>/dev/null || true
 	) &
 	watchdog_pid=$!

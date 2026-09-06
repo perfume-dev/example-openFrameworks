@@ -1,5 +1,10 @@
 # G1 kinematic reference reproduction kit
 
+**Moved:** the maintained reproduction kit now lives in
+[`perfume-dev/g1-motion-lab/tools/g1-retarget`](https://github.com/perfume-dev/g1-motion-lab/tree/main/tools/g1-retarget).
+This copy and its instructions remain a historical snapshot for existing
+checkouts. Use the standalone repository for new G1 development and issues.
+
 This code adapts the original Perfume A/B/C BVH recordings to the pinned
 29-DOF Unitree G1 model, evaluates the resulting poses, and exports the data
 used by [G1 Motion Lab](../../example-g1-motion-lab/).

@@ -1,5 +1,13 @@
 # G1 Motion Lab
 
+**Moved:** active development is now in
+[`perfume-dev/g1-motion-lab`](https://github.com/perfume-dev/g1-motion-lab).
+Use its [standalone openFrameworks viewer](https://github.com/perfume-dev/g1-motion-lab/tree/main/examples/openframeworks),
+shared data, and companion Processing/Python viewers for new work.
+This directory is retained as a historical snapshot for existing links and
+checkouts; the instructions below describe that snapshot. No original data or
+Git history has been removed. Neither version controls a physical robot.
+
 A quiet, inspectable **kinematic reference viewer** for the Perfume A / B / C
 motion studies retargeted to the Unitree G1. The actual G1 body geometry is drawn
 using lightweight convex hulls derived from the official robot model, not a

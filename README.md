@@ -7,8 +7,12 @@ The six examples from the 2012 Perfume “Global Site Project” now use the
 programmable OpenGL 3.2 renderer, `ofApp`, member-owned state, and mesh-based
 drawing. Two new shader studies turn the bundled motion into luminous ribbons
 and animated contour fields.
-The [G1 Motion Lab](example-g1-motion-lab) adds a Unitree G1 kinematic-reference
-study, with an original-human-skeleton overlay and explicit validation status.
+**G1 Motion Lab now has its own home:**
+[`perfume-dev/g1-motion-lab`](https://github.com/perfume-dev/g1-motion-lab), with
+shared Perfume BVH/reference data and openFrameworks, Processing and Python viewers.
+The local G1 example and reproduction kit remain as historical snapshots for
+existing links. New G1 development, fixes and issues belong in the standalone
+repository; this collection continues to maintain the general graphics examples.
 
 ## Start with the shader studies
 
